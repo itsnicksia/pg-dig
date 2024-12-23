@@ -1,8 +1,8 @@
 #![allow(unused_variables)]
-#![allow(non_upper_case_globals)]
 #![allow(unsafe_code)]
 
-use pg_dig_server::libpq::*;
+use pg_dig_server::postgres::bindings::PQfinish;
+use pg_dig_server::postgres::replication::{connect, start_replicating, start_replication};
 
 const LOCAL_CONNECTION_STRING: &str = "host=localhost user=postgres dbname=postgres password=postgres replication=database";
 fn main() {
