@@ -25,7 +25,7 @@ pub struct XLogRecord {
 
 impl XLogRecord {
     pub unsafe fn from_buffer(buffer: *mut c_char) -> XLogRecord {
-        slice::from_raw_parts(buffer as *const u8, size_of::<XLogHeader>())
+        slice::from_raw_parts(buffer as *const u8, size_of::<XLogRecord>())
             .pread_with::<XLogRecord>(0, scroll::LE)
             .expect("failed to read xlog record")
     }
@@ -43,6 +43,18 @@ pub struct XLogHeader {
     pub data_start: u64,
     pub wal_end: u64,
     pub send_time: u64,
+}
+
+impl XLogHeader {
+    pub unsafe fn from_buffer(buffer: *mut c_char) -> XLogHeader {
+        slice::from_raw_parts(buffer as *const u8, size_of::<XLogHeader>())
+            .pread_with::<XLogHeader>(0, scroll::LE)
+            .expect("failed to read xlog record")
+    }
+
+    pub unsafe fn from_message(buffer: *mut c_char) -> XLogHeader {
+        todo!();
+    }
 }
 
 /*
