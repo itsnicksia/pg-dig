@@ -9,7 +9,7 @@ use chrono::{DateTime, Days, Months};
 use scroll::Pread;
 use crate::postgres::bindings::*;
 use crate::postgres::lsn::Lsn;
-use crate::postgres::xlog::{XLogHeader, XLogRecord};
+use crate::postgres::types::{XLogMessageHeader, XLogRecordHeader};
 
 pub unsafe fn print_status(conn: *mut PGconn) {
     let conn_status = friendly_conn_status(PQstatus(conn));
@@ -80,17 +80,17 @@ pub unsafe fn start_replicating(conn: *mut PGconn, consumer: fn(String)) -> Resu
 unsafe fn processWalMessage(buffer: *mut c_char, consumer: fn(String)) {
     let mut offset = 1;
     processWalRecordHeader(buffer.add(offset));
-    offset += size_of::<XLogHeader>();
+    offset += size_of::<XLogMessageHeader>();
 
     processWalRecord(buffer.add(offset), consumer);
     //offset += size_of::<XLogRecord>();
 }
 
 unsafe fn processWalRecordHeader(buffer: *mut c_char) {
-    let header_slice = slice::from_raw_parts(buffer as *const u8, size_of::<XLogHeader>());
+    let header_slice = slice::from_raw_parts(buffer as *const u8, size_of::<XLogMessageHeader>());
 
     let xlog_header = header_slice
-        .pread_with::<XLogHeader>(0, scroll::BE)
+        .pread_with::<XLogMessageHeader>(0, scroll::BE)
         .expect("failed to read xlog record header");
 
     println!("dataStart: {}", Lsn::from_u64(xlog_header.data_start));
@@ -104,7 +104,7 @@ unsafe fn processWalRecordHeader(buffer: *mut c_char) {
 }
 
 unsafe fn processWalRecord(buffer: *mut c_char, consumer: fn(String)) {
-    let xlog_record = XLogRecord::from_buffer(buffer);
+    let xlog_record = XLogRecordHeader::from_buffer(buffer);
 
     println!("xlog record: {:#?}", xlog_record);
     consumer(String::from("poop"));

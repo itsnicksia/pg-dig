@@ -1,6 +1,6 @@
 pub mod bindings;
 pub mod replication;
-pub mod xlog;
+pub mod types;
 
 mod lsn;
 
