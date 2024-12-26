@@ -98,6 +98,7 @@ unsafe fn processWalRecordHeader(buffer: *const u8) {
     println!("sendTime: {}",
              DateTime::from_timestamp_micros(xlog_header.send_time.try_into().expect("sendTime too large"))
                  .expect("error")
+                 /* FIXME: Not sure why it's off by exactly 30 years...? */
                  .checked_add_months(Months::new(360)).unwrap()
                  .checked_sub_days(Days::new(1)).unwrap()
     );

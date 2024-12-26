@@ -4,8 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-scroll = {  version = "0.12.0", features = ["derive"] }
+bitflags = "2.6.0"
 chrono = "0.4.39"
+scroll = {  version = "0.12.0", features = ["derive"] }
+
 
 [build-dependencies]
 bindgen = "0.71.0"

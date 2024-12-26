@@ -1,5 +1,6 @@
 use std::ffi::{c_uint};
 use std::slice;
+use bitflags::bitflags;
 use scroll::Pread;
 
 /// XLogMessage contains the relevant parts of the replication message for monitoring.
@@ -26,11 +27,30 @@ pub struct XLogRecordHeader {
     pub xl_crc: u32,                /* CRC for this record */
 }
 
+bitflags! {
+    #[derive(Debug)]
+    pub struct XLogFlags: u8 {
+        const XLR_SPECIAL_REL_UPDATE = 0b01;
+        const XLR_CHECK_CONSISTENCY  = 0b10;
+    }
+}
+
 impl XLogRecordHeader {
     pub unsafe fn from_bytes(bytes: *const u8) -> XLogRecordHeader {
-        slice::from_raw_parts(bytes, size_of::<XLogRecordHeader>())
+        let header = slice::from_raw_parts(bytes, size_of::<XLogRecordHeader>())
             .pread_with::<XLogRecordHeader>(0, scroll::LE)
-            .expect("failed to read xlog record")
+            .expect("failed to read xlog record");
+
+        let flags = XLogFlags::from_bits_truncate(header.xl_info);
+
+        println!(
+            "xl_info: {:08b}, is_special_rel_update: {}, is_check_consistency: {}",
+            header.xl_info,
+            flags.contains(XLogFlags::XLR_SPECIAL_REL_UPDATE),
+            flags.contains(XLogFlags::XLR_CHECK_CONSISTENCY)
+        );
+
+        return header;
     }
 }
 
