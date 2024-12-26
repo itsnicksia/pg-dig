@@ -2,7 +2,6 @@
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
 
-
 use std::ffi::{c_char, c_int, CStr, CString};
 use std::slice;
 use chrono::{DateTime, Days, Months};
@@ -77,17 +76,18 @@ pub unsafe fn start_replicating(conn: *mut PGconn, consumer: fn(String)) -> Resu
     Ok(0)
 }
 
-unsafe fn processWalMessage(buffer: *mut c_char, consumer: fn(String)) {
+unsafe fn processWalMessage(buffer: *const c_char, consumer: fn(String)) {
+    let u8_buffer: *const u8 = buffer as *const u8;
     let mut offset = 1;
-    processWalRecordHeader(buffer.add(offset));
+    processWalRecordHeader(u8_buffer.add(offset));
     offset += size_of::<XLogMessageHeader>();
 
-    processWalRecord(buffer.add(offset), consumer);
+    processWalRecord(u8_buffer.add(offset), consumer);
     //offset += size_of::<XLogRecord>();
 }
 
-unsafe fn processWalRecordHeader(buffer: *mut c_char) {
-    let header_slice = slice::from_raw_parts(buffer as *const u8, size_of::<XLogMessageHeader>());
+unsafe fn processWalRecordHeader(buffer: *const u8) {
+    let header_slice = slice::from_raw_parts(buffer, size_of::<XLogMessageHeader>());
 
     let xlog_header = header_slice
         .pread_with::<XLogMessageHeader>(0, scroll::BE)
@@ -103,8 +103,8 @@ unsafe fn processWalRecordHeader(buffer: *mut c_char) {
     );
 }
 
-unsafe fn processWalRecord(buffer: *mut c_char, consumer: fn(String)) {
-    let xlog_record = XLogRecordHeader::from_buffer(buffer);
+unsafe fn processWalRecord(buffer: *const u8, consumer: fn(String)) {
+    let xlog_record = XLogRecordHeader::from_bytes(buffer);
 
     println!("xlog record: {:#?}", xlog_record);
     consumer(String::from("poop"));

@@ -1,6 +1,7 @@
 use std::ffi::c_char;
 use std::slice;
 
+#[allow(dead_code)]
 pub unsafe fn print_buffer(buffer: *const c_char) {
     println!("[message bytes]");
     for byte in slice::from_raw_parts(buffer as *const u8, 1024) {

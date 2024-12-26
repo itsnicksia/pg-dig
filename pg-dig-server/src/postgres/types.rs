@@ -1,4 +1,4 @@
-use std::ffi::{c_char, c_uint};
+use std::ffi::{c_uint};
 use std::slice;
 use scroll::Pread;
 
@@ -6,11 +6,11 @@ use scroll::Pread;
 ///
 /// We only read headers to avoid reading user data.
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, Pread)]
 pub struct XLogMessage {
     header: XLogMessageHeader,
     record_header: XLogRecordHeader,
-    record_block_headers: Vec<XLogRecordBlockHeader>
+    //record_block_headers: Vec<XLogRecordBlockHeader>
 }
 
 /// XLogRecordHeader contains information about the record contained in the message.
@@ -27,7 +27,7 @@ pub struct XLogRecordHeader {
 }
 
 impl XLogRecordHeader {
-    pub unsafe fn from_bytes(bytes: *const c_char) -> XLogRecordHeader {
+    pub unsafe fn from_bytes(bytes: *const u8) -> XLogRecordHeader {
         slice::from_raw_parts(bytes, size_of::<XLogRecordHeader>())
             .pread_with::<XLogRecordHeader>(0, scroll::LE)
             .expect("failed to read xlog record")
@@ -49,8 +49,8 @@ pub struct XLogRecordBlockHeader {
     id: u8,
     fork_flags: u8,
     data_length: u16,
-    image_header: Option<XLogRecordBlockImageHeader>,
-    rel_file_locator: Option<RelFileLocator>,
+    // image_header: Option<XLogRecordBlockImageHeader>,
+    // rel_file_locator: Option<RelFileLocator>,
     block_number: u32,
 }
 
@@ -68,11 +68,13 @@ struct XLogRecordBlockImageHeader {
     length: u16,
     hole_offset: u16,
     bimg_info: u8,
-    hole_length: Option<u16>
+    // FIXME: Breaks pread
+    //hole_length: Option<u16>
 }
 
 impl XLogMessage {
-    pub unsafe fn from_bytes(bytes: *const c_char) {
+    #[allow(unused_variables)]
+    pub unsafe fn from_bytes(bytes: *const u8) {
         let message_header = XLogMessageHeader::from_bytes(bytes.add(1));
         let record_header = XLogRecordHeader::from_bytes(bytes.add(1 + size_of::<XLogMessageHeader>() ));
         let record_block_headers: Vec<XLogRecordBlockHeader> = vec![];
@@ -93,7 +95,7 @@ pub struct XLogMessageHeader {
 }
 
 impl XLogMessageHeader {
-    pub unsafe fn from_bytes(buffer: *const c_char) -> XLogMessageHeader {
+    pub unsafe fn from_bytes(buffer: *const u8) -> XLogMessageHeader {
         slice::from_raw_parts(buffer as *const u8, size_of::<XLogMessageHeader>())
             .pread_with::<XLogMessageHeader>(0, scroll::LE)
             .expect("failed to read xlog record")
