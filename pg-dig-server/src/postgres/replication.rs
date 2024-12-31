@@ -2,13 +2,14 @@
 #![allow(non_snake_case)]
 #![allow(non_upper_case_globals)]
 
-use std::ffi::{c_char, c_int, CStr, CString};
-use std::slice;
-use chrono::{DateTime, Days, Months};
-use scroll::Pread;
 use crate::postgres::bindings::*;
 use crate::postgres::lsn::Lsn;
-use crate::postgres::types::{XLogMessageHeader, XLogRecordHeader};
+use crate::postgres::types::{XLogMessageHeader, XLogRecordBlockHeader, XLogRecordHeader};
+use chrono::{DateTime, Days, Months};
+use scroll::Pread;
+use std::ffi::{c_char, c_int, CStr, CString};
+use std::slice;
+use crate::postgres::constants::{XLR_BLOCK_ID_DATA_LONG, XLR_BLOCK_ID_DATA_SHORT, XLR_BLOCK_ID_ORIGIN, XLR_BLOCK_ID_TOPLEVEL_XID, XLR_MAX_BLOCK_ID};
 
 pub unsafe fn print_status(conn: *mut PGconn) {
     let conn_status = friendly_conn_status(PQstatus(conn));
@@ -49,7 +50,7 @@ pub unsafe fn start_replication(conn: *mut PGconn) -> Result<(), String> {
 
 pub unsafe fn start_replicating(conn: *mut PGconn, consumer: fn(String)) -> Result<i32, String> {
     let mut buffer: *mut c_char = vec![0; 1024].as_mut_ptr();
-    println!("buffer@{}", buffer as isize);
+    println!("==============");
 
     loop {
         if PQconsumeInput(conn) == 0 {
@@ -79,14 +80,14 @@ pub unsafe fn start_replicating(conn: *mut PGconn, consumer: fn(String)) -> Resu
 unsafe fn processWalMessage(buffer: *const c_char, consumer: fn(String)) {
     let u8_buffer: *const u8 = buffer as *const u8;
     let mut offset = 1;
-    processWalRecordHeader(u8_buffer.add(offset));
+    process_wal_record_header(u8_buffer.add(offset));
     offset += size_of::<XLogMessageHeader>();
 
-    processWalRecord(u8_buffer.add(offset), consumer);
+    process_wal_record(u8_buffer.add(offset), consumer);
     //offset += size_of::<XLogRecord>();
 }
 
-unsafe fn processWalRecordHeader(buffer: *const u8) {
+unsafe fn process_wal_record_header(buffer: *const u8) {
     let header_slice = slice::from_raw_parts(buffer, size_of::<XLogMessageHeader>());
 
     let xlog_header = header_slice
@@ -104,10 +105,36 @@ unsafe fn processWalRecordHeader(buffer: *const u8) {
     );
 }
 
-unsafe fn processWalRecord(buffer: *const u8, consumer: fn(String)) {
+unsafe fn process_wal_record(buffer: *const u8, consumer: fn(String)) {
+    let mut _offset: usize = 0;
     let xlog_record = XLogRecordHeader::from_bytes(buffer);
+    _offset += size_of::<XLogRecordHeader>();
 
-    println!("xlog record: {:#?}", xlog_record);
+    println!("xlog_record: {:#?}", xlog_record);
+    println!("xlog_record_flags: {}", xlog_record.read_flags());
+
+    /* peek at the block header id */
+    let block_id = *buffer.add(_offset);
+    println!("found block id: {}", block_id);
+    match block_id {
+        XLR_BLOCK_ID_DATA_SHORT     => todo!("read as block data short"),
+        XLR_BLOCK_ID_DATA_LONG      => todo!("read as block data long"),
+        XLR_BLOCK_ID_ORIGIN         => todo!("read as block origin"),
+        XLR_BLOCK_ID_TOPLEVEL_XID   => todo!("read as block toplevel xid"),
+        0..XLR_MAX_BLOCK_ID         => {
+            let xlog_block_header = XLogRecordBlockHeader::from_bytes(buffer.add(_offset));
+            let xlog_block_header_flags = xlog_block_header.read_flags();
+            _offset += size_of::<XLogRecordBlockHeader>();
+
+            println!("xlog_block_header: {:#?}", xlog_block_header);
+            println!("xlog_block_header_flags: {}", xlog_block_header_flags);
+        },
+        _ => panic!("unexpected block id: {}", block_id)
+    }
+
+
+
+
     consumer(String::from("poop"));
 }
 
