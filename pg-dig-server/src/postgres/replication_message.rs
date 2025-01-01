@@ -38,7 +38,7 @@ pub struct XLogMessageHeader {
 
 impl XLogMessageHeader {
     pub unsafe fn from_bytes(buffer: *const u8) -> XLogMessageHeader {
-        slice::from_raw_parts(buffer as *const u8, size_of::<XLogMessageHeader>())
+        slice::from_raw_parts(buffer, size_of::<XLogMessageHeader>())
             .pread_with::<XLogMessageHeader>(0, scroll::LE)
             .expect("failed to read xlog record")
     }

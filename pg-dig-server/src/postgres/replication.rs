@@ -3,14 +3,14 @@
 #![allow(non_upper_case_globals)]
 
 use crate::postgres::bindings::*;
-use crate::postgres::lsn::Lsn;
+use crate::postgres::common::lsn::Lsn;
 use chrono::{DateTime, Days, Months};
 use scroll::Pread;
 use std::ffi::{c_char, c_int, CStr, CString};
 use std::slice;
-use crate::postgres::constants::{XLR_BLOCK_ID_DATA_LONG, XLR_BLOCK_ID_DATA_SHORT, XLR_BLOCK_ID_ORIGIN, XLR_BLOCK_ID_TOPLEVEL_XID, XLR_MAX_BLOCK_ID};
+use crate::postgres::xlog::constants::{XLR_BLOCK_ID_DATA_LONG, XLR_BLOCK_ID_DATA_SHORT, XLR_BLOCK_ID_ORIGIN, XLR_BLOCK_ID_TOPLEVEL_XID, XLR_MAX_BLOCK_ID};
 use crate::postgres::xlog::block_header::XLogRecordBlockHeader;
-use crate::postgres::xlog::message_header::XLogMessageHeader;
+use crate::postgres::replication_message::XLogMessageHeader;
 use crate::postgres::xlog::record_header::XLogRecordHeader;
 
 pub unsafe fn print_status(conn: *mut PGconn) {

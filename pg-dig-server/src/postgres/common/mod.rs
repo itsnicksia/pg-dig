@@ -1,6 +1,8 @@
 use std::ffi::c_uint;
 use scroll::Pread;
 
+pub mod lsn;
+
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pread, PartialEq)]
 pub struct TransactionId(pub u32);

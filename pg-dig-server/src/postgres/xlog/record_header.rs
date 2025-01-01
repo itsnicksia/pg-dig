@@ -23,6 +23,7 @@ impl XLogRecordHeader {
     }
 
     pub unsafe fn from_bytes(bytes: *const u8) -> XLogRecordHeader {
+        todo!("validate padding");
         slice::from_raw_parts(bytes, size_of::<XLogRecordHeader>())
             .pread_with::<XLogRecordHeader>(0, scroll::LE)
             .expect("failed to read xlog record")
