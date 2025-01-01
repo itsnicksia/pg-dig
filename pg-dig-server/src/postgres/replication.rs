@@ -4,12 +4,14 @@
 
 use crate::postgres::bindings::*;
 use crate::postgres::lsn::Lsn;
-use crate::postgres::types::{XLogMessageHeader, XLogRecordBlockHeader, XLogRecordHeader};
 use chrono::{DateTime, Days, Months};
 use scroll::Pread;
 use std::ffi::{c_char, c_int, CStr, CString};
 use std::slice;
 use crate::postgres::constants::{XLR_BLOCK_ID_DATA_LONG, XLR_BLOCK_ID_DATA_SHORT, XLR_BLOCK_ID_ORIGIN, XLR_BLOCK_ID_TOPLEVEL_XID, XLR_MAX_BLOCK_ID};
+use crate::postgres::xlog::block_header::XLogRecordBlockHeader;
+use crate::postgres::xlog::message_header::XLogMessageHeader;
+use crate::postgres::xlog::record_header::XLogRecordHeader;
 
 pub unsafe fn print_status(conn: *mut PGconn) {
     let conn_status = friendly_conn_status(PQstatus(conn));
@@ -110,18 +112,15 @@ unsafe fn process_wal_record(buffer: *const u8, consumer: fn(String)) {
     let xlog_record = XLogRecordHeader::from_bytes(buffer);
     _offset += size_of::<XLogRecordHeader>();
 
-    println!("xlog_record: {:#?}", xlog_record);
+    let xid = xlog_record.xl_xid;
     println!("xlog_record_flags: {}", xlog_record.read_flags());
+
+    println!("xid: {:?}", xid);
 
     /* peek at the block header id */
     let block_id = *buffer.add(_offset);
-    println!("found block id: {}", block_id);
     match block_id {
-        XLR_BLOCK_ID_DATA_SHORT     => todo!("read as block data short"),
-        XLR_BLOCK_ID_DATA_LONG      => todo!("read as block data long"),
-        XLR_BLOCK_ID_ORIGIN         => todo!("read as block origin"),
-        XLR_BLOCK_ID_TOPLEVEL_XID   => todo!("read as block toplevel xid"),
-        0..XLR_MAX_BLOCK_ID         => {
+        0..XLR_MAX_BLOCK_ID => {
             let xlog_block_header = XLogRecordBlockHeader::from_bytes(buffer.add(_offset));
             let xlog_block_header_flags = xlog_block_header.read_flags();
             _offset += size_of::<XLogRecordBlockHeader>();
@@ -129,11 +128,11 @@ unsafe fn process_wal_record(buffer: *const u8, consumer: fn(String)) {
             println!("xlog_block_header: {:#?}", xlog_block_header);
             println!("xlog_block_header_flags: {}", xlog_block_header_flags);
         },
-        _ => panic!("unexpected block id: {}", block_id)
+        XLR_BLOCK_ID_DATA_SHORT | XLR_BLOCK_ID_DATA_LONG => println!("ignoring unwanted data header ({})", block_id),
+        XLR_BLOCK_ID_ORIGIN         => println!("ignoring unwanted origin header ()"),
+        XLR_BLOCK_ID_TOPLEVEL_XID   => println!("ignoring unwanted toplevelxid header ()"),
+        _ => panic!("invalid block id: {}", block_id)
     }
-
-
-
 
     consumer(String::from("poop"));
 }
