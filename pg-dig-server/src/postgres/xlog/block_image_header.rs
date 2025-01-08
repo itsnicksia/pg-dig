@@ -22,8 +22,7 @@ pub struct XLogRecordBlockImageHeader {
     length: u16,
     hole_offset: u16,
     bimg_info: u8,
-    // FIXME: Breaks pread
-    //hole_length: Option<u16>
+    pub hole_length: Option<u16>
 }
 
 impl XLogRecordBlockImageHeader {
@@ -52,6 +51,7 @@ impl XLogRecordBlockImageHeader {
             length,
             hole_offset,
             bimg_info,
+            hole_length: Some(0)
         }
     }
 }

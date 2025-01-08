@@ -3,15 +3,18 @@
 #![allow(non_upper_case_globals)]
 
 use crate::postgres::bindings::*;
-use crate::postgres::common::lsn::Lsn;
-use chrono::{DateTime, Days, Months};
-use scroll::Pread;
-use std::ffi::{c_char, c_int, CStr, CString};
-use std::slice;
-use crate::postgres::xlog::constants::{XLR_BLOCK_ID_DATA_LONG, XLR_BLOCK_ID_DATA_SHORT, XLR_BLOCK_ID_ORIGIN, XLR_BLOCK_ID_TOPLEVEL_XID, XLR_MAX_BLOCK_ID};
-use crate::postgres::xlog::block_header::XLogRecordBlockHeader;
+use crate::postgres::common::{RelFileLocator, TransactionId};
 use crate::postgres::replication_message::XLogMessageHeader;
+use crate::postgres::xlog::block_header::XLogRecordBlockHeader;
+use crate::postgres::xlog::constants::{XLR_BLOCK_ID_DATA_LONG, XLR_BLOCK_ID_DATA_SHORT, XLR_BLOCK_ID_ORIGIN, XLR_BLOCK_ID_TOPLEVEL_XID, XLR_MAX_BLOCK_ID};
 use crate::postgres::xlog::record_header::XLogRecordHeader;
+use scroll::Pread;
+use std::ffi::{c_char, CStr, CString};
+use std::slice;
+use crate::postgres::common::info::Info;
+
+const replication_slot_name: &str = "physical";
+const start_lsn: &str = "0/4377DED8";
 
 pub unsafe fn print_status(conn: *mut PGconn) {
     let conn_status = friendly_conn_status(PQstatus(conn));
@@ -43,52 +46,50 @@ pub unsafe fn connect(conn_string: &str) -> *mut pg_conn {
 }
 
 pub unsafe fn start_replication(conn: *mut PGconn) -> Result<(), String> {
-    let result = exec(conn,"START_REPLICATION SLOT physical PHYSICAL 0/1552C80");
+    let stmt = format!("START_REPLICATION SLOT {} PHYSICAL {}", replication_slot_name, start_lsn);
+    let result = exec(conn, stmt.as_str());
     match PQresultStatus(result) {
         ExecStatusType_PGRES_COPY_BOTH => Ok(()),
         other => Err(friendly_exec_status(other)),
     }
 }
 
-pub unsafe fn start_replicating(conn: *mut PGconn, consumer: fn(String)) -> Result<i32, String> {
+pub unsafe fn start_replicating<C>(conn: *mut PGconn, consumer: C) -> Result<i32, String>
+    where C: Fn(Info) {
     let mut buffer: *mut c_char = vec![0; 1024].as_mut_ptr();
-    println!("==============");
-
     loop {
         if PQconsumeInput(conn) == 0 {
             println!("error!");
             return Err(String::from("failed to consume input"))
         }
-        let length: Result<c_int, String> = match PQgetCopyData(conn, &mut buffer, 0) {
-            length if length > 0 => Ok(length),
-            -1 => Err("replication: done!".to_string()),
-            -2 => Err("replication: copy failed!".to_string()),
+        match PQgetCopyData(conn, &mut buffer, 0) {
+            length if length > 0 => { },
+            -1 => panic!("replication: done!"),
+            -2 => {
+                let error = PQerrorMessage(conn);
+                panic!("replication failed!. Reason: {}", CStr::from_ptr(error).to_str().expect("failed to parse error message"));
+            },
             other => panic!("not yet implemented: {}", other)
         };
 
-        if length.is_err() {
-            break;
-        }
-
         match *buffer as u8 as char {
-            'w' => processWalMessage(&mut *buffer, consumer),
-            'k' => println!("*keep-alive received*"),
+            'w' => process_wal_message(&mut *buffer, &consumer),
+            'k' => println!("*keep-alive*"),
             other => panic!("unexpected record type: {}", other)
         }
     }
-    Ok(0)
 }
 
-unsafe fn processWalMessage(buffer: *const c_char, consumer: fn(String)) {
+unsafe fn process_wal_message<C>(buffer: *const c_char, consumer: C) where C: Fn(Info) {
     let u8_buffer: *const u8 = buffer as *const u8;
     let mut offset = 1;
     process_wal_record_header(u8_buffer.add(offset));
     offset += size_of::<XLogMessageHeader>();
 
     process_wal_record(u8_buffer.add(offset), consumer);
-    //offset += size_of::<XLogRecord>();
 }
 
+#[allow(unused_variables)]
 unsafe fn process_wal_record_header(buffer: *const u8) {
     let header_slice = slice::from_raw_parts(buffer, size_of::<XLogMessageHeader>());
 
@@ -96,45 +97,77 @@ unsafe fn process_wal_record_header(buffer: *const u8) {
         .pread_with::<XLogMessageHeader>(0, scroll::BE)
         .expect("failed to read xlog record header");
 
-    println!("dataStart: {}", Lsn::from_u64(xlog_header.data_start));
-    println!("walEnd: {}", Lsn::from_u64(xlog_header.wal_end));
-    println!("sendTime: {}",
-             DateTime::from_timestamp_micros(xlog_header.send_time.try_into().expect("sendTime too large"))
-                 .expect("error")
-                 /* FIXME: Not sure why it's off by exactly 30 years...? */
-                 .checked_add_months(Months::new(360)).unwrap()
-                 .checked_sub_days(Days::new(1)).unwrap()
-    );
+    // println!("dataStart: {}", Lsn::from_u64(xlog_header.data_start));
+    // println!("walEnd: {}", Lsn::from_u64(xlog_header.wal_end));
+    // println!("sendTime: {}",
+    //          DateTime::from_timestamp_micros(xlog_header.send_time.try_into().expect("sendTime too large"))
+    //              .expect("error")
+    //              /* FIXME: Not sure why it's off by exactly 30 years...? */
+    //              .checked_add_months(Months::new(360)).unwrap()
+    //              .checked_sub_days(Days::new(1)).unwrap()
+    // );
 }
 
-unsafe fn process_wal_record(buffer: *const u8, consumer: fn(String)) {
+#[allow(unused_variables)]
+unsafe fn process_wal_record<C>(buffer: *const u8, consumer:C) where C: Fn(Info) {
     let mut _offset: usize = 0;
     let xlog_record = XLogRecordHeader::from_bytes(buffer);
     _offset += size_of::<XLogRecordHeader>();
 
     let xid = xlog_record.xl_xid;
-    println!("xlog_record_flags: {}", xlog_record.read_flags());
+    //println!("xid: {:?}", xid);
 
-    println!("xid: {:?}", xid);
-
-    /* peek at the block header id */
-    let block_id = *buffer.add(_offset);
-    match block_id {
-        0..XLR_MAX_BLOCK_ID => {
-            let xlog_block_header = XLogRecordBlockHeader::from_bytes(buffer.add(_offset));
-            let xlog_block_header_flags = xlog_block_header.read_flags();
-            _offset += size_of::<XLogRecordBlockHeader>();
-
-            println!("xlog_block_header: {:#?}", xlog_block_header);
-            println!("xlog_block_header_flags: {}", xlog_block_header_flags);
-        },
-        XLR_BLOCK_ID_DATA_SHORT | XLR_BLOCK_ID_DATA_LONG => println!("ignoring unwanted data header ({})", block_id),
-        XLR_BLOCK_ID_ORIGIN         => println!("ignoring unwanted origin header ()"),
-        XLR_BLOCK_ID_TOPLEVEL_XID   => println!("ignoring unwanted toplevelxid header ()"),
-        _ => panic!("invalid block id: {}", block_id)
+    match xid {
+        TransactionId(0) => return,
+        TransactionId(1) => return,
+        _ => {}
     }
 
-    consumer(String::from("poop"));
+    /* peek at the block header id */
+    loop {
+        let block_id = *buffer.add(_offset);
+        match block_id {
+            0..XLR_MAX_BLOCK_ID => {
+                let xlog_block_header = XLogRecordBlockHeader::from_bytes(buffer.add(_offset));
+                let xlog_block_header_flags = xlog_block_header.read_flags();
+                _offset += size_of::<u8>() + size_of::<u8>() + size_of::<u16>() + size_of::<u32>();
+                if xlog_block_header.rel_file_locator.is_some() {
+                    _offset += size_of::<RelFileLocator>();
+                }
+                println!("block written: {}", xlog_block_header.block_number);
+                let fork_number = xlog_block_header.fork_flags >> 4;
+                consumer(Info {
+                    block_number: xlog_block_header.block_number,
+                    table_name: match xlog_block_header.rel_file_locator {
+                        Some(loc) => loc.rel_number.to_string(),
+                        None => "unknown".to_string(),
+                    },
+                    fork_name: match fork_number {
+                        0 => "main",
+                        1 => "fsm",
+                        2 => "vis",
+                        3 => "init",
+                        _ => panic!("invalid fork number: {}", fork_number),
+                    }.to_string()
+                });
+            },
+            XLR_BLOCK_ID_DATA_SHORT | XLR_BLOCK_ID_DATA_LONG => {
+                println!("finished block headers: {}", block_id);
+                break;
+            },
+            XLR_BLOCK_ID_ORIGIN => {
+                println!("ignoring unwanted origin header ()");
+                break;
+            },
+            XLR_BLOCK_ID_TOPLEVEL_XID => println!("ignoring unwanted toplevelxid header ()"),
+            _ => {
+                println!("found invalid block id: {}. skipping rest of message.", block_id);
+                break;
+            }
+        }
+    }
+
+
 }
 
 

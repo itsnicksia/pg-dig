@@ -1,6 +1,7 @@
-use std::{fmt, slice};
+use std::{fmt, ptr, slice};
 use std::fmt::Formatter;
 use bitflags::bitflags;
+use scroll::Pread;
 use crate::postgres::common::RelFileLocator;
 use crate::postgres::xlog::block_image_header::XLogRecordBlockImageHeader;
 
@@ -8,11 +9,11 @@ use crate::postgres::xlog::block_image_header::XLogRecordBlockImageHeader;
 #[derive(Debug)]
 pub struct XLogRecordBlockHeader {
     id: u8,
-    fork_flags: u8,
+    pub(crate) fork_flags: u8,
     data_length: u16,
     image_header: Option<XLogRecordBlockImageHeader>,
-    rel_file_locator: Option<RelFileLocator>,
-    block_number: u32,
+    pub rel_file_locator: Option<RelFileLocator>,
+    pub(crate) block_number: u32,
 }
 
 impl XLogRecordBlockHeader {
@@ -42,11 +43,28 @@ impl XLogRecordBlockHeader {
 
         let flags = XLogRecordBlockHeaderFlags::from_bits_retain(fork_flags);
         /* If BKPBLOCK_HAS_IMAGE, an XLogRecordBlockImageHeader struct follows */
-        /* If BKPBLOCK_SAME_REL is not set, a RelFileLocator follows */
 
-        let image_header = match flags.contains(XLogRecordBlockHeaderFlags::BKPBLOCK_HAS_IMAGE) {
-            true =>  Some(XLogRecordBlockImageHeader::from_bytes(bytes.add(_offset))),
+        let image_header: Option<XLogRecordBlockImageHeader> = match flags.contains(XLogRecordBlockHeaderFlags::BKPBLOCK_HAS_IMAGE) {
+            true =>  {
+                let header = Some(XLogRecordBlockImageHeader::from_bytes(bytes.add(_offset)));
+                _offset += size_of::<XLogRecordBlockImageHeader>();
+                header
+            },
             false => None
+        };
+
+        /* If BKPBLOCK_SAME_REL is not set, a RelFileLocator follows */
+        let rel_file_locator = match flags.contains(XLogRecordBlockHeaderFlags::BKPBLOCK_SAME_REL) {
+            false => {
+                let locator = slice::from_raw_parts(bytes.add(_offset), size_of::<RelFileLocator>())
+                    .pread_with::<RelFileLocator>(0, scroll::LE)
+                    .expect("failed to parse rel file locator");
+
+                _offset += size_of::<RelFileLocator>();
+
+                Some(locator)
+            }
+            true => None
         };
 
         XLogRecordBlockHeader {
@@ -54,8 +72,8 @@ impl XLogRecordBlockHeader {
             fork_flags,
             data_length,
             image_header,
-            rel_file_locator: None,
-            block_number: 0,
+            rel_file_locator,
+            block_number: ptr::read(bytes.add(_offset) as *const u32),
         }
     }
 }
@@ -72,10 +90,10 @@ bitflags! {
      */
     #[derive(Debug)]
     pub struct XLogRecordBlockHeaderFlags: u8 {
-        const BKPBLOCK_HAS_IMAGE    = 0x10;
-        const BKPBLOCK_HAS_DATA     = 0x20;
-        const BKPBLOCK_WILL_INIT    = 0x40;
-        const BKPBLOCK_SAME_REL	    = 0x80;
+        const BKPBLOCK_HAS_IMAGE    = 0x0010;
+        const BKPBLOCK_HAS_DATA     = 0x0020;
+        const BKPBLOCK_WILL_INIT    = 0x0040;
+        const BKPBLOCK_SAME_REL	    = 0x0080;
     }
 }
 

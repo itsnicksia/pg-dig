@@ -5,9 +5,7 @@ edition = "2021"
 
 [dependencies]
 bitflags = "2.6.0"
-chrono = "0.4.39"
+bevy = "0.15.1"
 scroll = {  version = "0.12.0", features = ["derive"] }
-
-
 [build-dependencies]
 bindgen = "0.71.0"

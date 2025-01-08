@@ -2,6 +2,7 @@ use std::ffi::c_uint;
 use scroll::Pread;
 
 pub mod lsn;
+pub mod info;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone, Pread, PartialEq)]
@@ -16,5 +17,5 @@ pub struct RmgrId(pub u8);
 pub struct RelFileLocator {
     spc_oid: c_uint,        /* tablespace */
     db_oid: c_uint,         /* database */
-    rel_number: c_uint,      /* relation */
+    pub rel_number: c_uint,      /* relation */
 }

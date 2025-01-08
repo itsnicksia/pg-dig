@@ -13,7 +13,6 @@ pub struct XLogRecordHeader {
     pub xl_prev: u64,               /* ptr to previous record in log */
     pub xl_info: u8,                /* flag bits, see below */
     pub xl_rmid: RmgrId,            /* resource manager for this record */
-    pub padding: [u8;2],            /* 2 bytes of padding here, initialize to zero */
     pub xl_crc: u32,                /* CRC for this record */
 }
 
@@ -23,10 +22,13 @@ impl XLogRecordHeader {
     }
 
     pub unsafe fn from_bytes(bytes: *const u8) -> XLogRecordHeader {
-        todo!("validate padding");
-        slice::from_raw_parts(bytes, size_of::<XLogRecordHeader>())
+        let record = slice::from_raw_parts(bytes, size_of::<XLogRecordHeader>())
             .pread_with::<XLogRecordHeader>(0, scroll::LE)
-            .expect("failed to read xlog record")
+            .expect("failed to read xlog record");
+
+        //println!("record: {:#?}", record);
+
+        record
     }
 }
 
@@ -41,12 +43,10 @@ bitflags! {
 impl fmt::Display for XLogRecordHeaderFlags {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         write!(f,
-               r#" XLogBlockHeaderFlags(
-    raw: {:08b}
+               r#" XLogRecordHeaderFlags(
     XLR_SPECIAL_REL_UPDATE: {}
     XLR_CHECK_CONSISTENCY: {}
 )"#,
-               self.bits(),
                self.contains(XLogRecordHeaderFlags::XLR_SPECIAL_REL_UPDATE),
                self.contains(XLogRecordHeaderFlags::XLR_CHECK_CONSISTENCY)
         )
