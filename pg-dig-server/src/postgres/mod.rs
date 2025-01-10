@@ -3,8 +3,9 @@ pub mod replication;
 pub mod common;
 pub mod xlog;
 pub mod xlog_message;
+pub mod connection;
+
 mod pg_conn;
-mod connection;
 mod query;
 mod xlog_parser;
 mod platform;

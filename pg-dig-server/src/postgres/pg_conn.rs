@@ -1,6 +1,9 @@
+#![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
+#![allow(non_upper_case_globals)]
+
 use std::ffi::CStr;
 use crate::postgres::bindings::{ConnStatusType, ConnStatusType_CONNECTION_ALLOCATED, ConnStatusType_CONNECTION_AUTH_OK, ConnStatusType_CONNECTION_AWAITING_RESPONSE, ConnStatusType_CONNECTION_BAD, ConnStatusType_CONNECTION_CHECK_STANDBY, ConnStatusType_CONNECTION_CHECK_TARGET, ConnStatusType_CONNECTION_CHECK_WRITABLE, ConnStatusType_CONNECTION_CONSUME, ConnStatusType_CONNECTION_GSS_STARTUP, ConnStatusType_CONNECTION_MADE, ConnStatusType_CONNECTION_NEEDED, ConnStatusType_CONNECTION_OK, ConnStatusType_CONNECTION_SETENV, ConnStatusType_CONNECTION_SSL_STARTUP, ConnStatusType_CONNECTION_STARTED, ExecStatusType, ExecStatusType_PGRES_BAD_RESPONSE, ExecStatusType_PGRES_COMMAND_OK, ExecStatusType_PGRES_COPY_BOTH, ExecStatusType_PGRES_COPY_IN, ExecStatusType_PGRES_COPY_OUT, ExecStatusType_PGRES_EMPTY_QUERY, ExecStatusType_PGRES_FATAL_ERROR, ExecStatusType_PGRES_NONFATAL_ERROR, ExecStatusType_PGRES_PIPELINE_ABORTED, ExecStatusType_PGRES_PIPELINE_SYNC, ExecStatusType_PGRES_SINGLE_TUPLE, ExecStatusType_PGRES_TUPLES_CHUNK, ExecStatusType_PGRES_TUPLES_OK, PGconn, PQgetResult, PQresultErrorMessage, PQresultStatus, PQstatus};
-use crate::postgres::replication::{friendly_conn_status, friendly_exec_status};
 
 pub unsafe fn print_status(conn: *mut PGconn) {
     let conn_status = friendly_conn_status(PQstatus(conn));
@@ -13,7 +16,6 @@ pub unsafe fn print_status(conn: *mut PGconn) {
 
     println!("{} | result: {} | error: {}", conn_status, friendly_exec_status(result_status), error_message);
 }
-
 
 pub unsafe fn friendly_exec_status(exec_status_type: ExecStatusType) -> String {
     String::from(match exec_status_type {

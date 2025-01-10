@@ -1,11 +1,9 @@
-use std::ops::AddAssign;
-use std::slice;
-use scroll::Pread;
-use crate::postgres::common::info::Info;
 use crate::postgres::platform::get_platform_endianness;
 use crate::postgres::xlog::block_header::XLogRecordBlockHeader;
 use crate::postgres::xlog::record_header::XLogRecordHeader;
 use crate::postgres::xlog_parser::process_wal_record;
+use scroll::Pread;
+use std::slice;
 
 /// XLogMessage contains the relevant parts of the replication message for monitoring.
 ///
@@ -13,42 +11,29 @@ use crate::postgres::xlog_parser::process_wal_record;
 #[repr(C)]
 #[derive(Debug)]
 pub struct XLogMessage {
-    header: XLogMessageHeader,
-    record_header: XLogRecordHeader,
-    record_block_headers: Vec<XLogRecordBlockHeader>
+    message_header: XLogMessageHeader,
+    wal_header: XLogRecordHeader,
+    wal_block_headers: Vec<XLogRecordBlockHeader>
 }
 
 impl XLogMessage {
     #[allow(unused_variables)]
-    pub unsafe fn from_bytes(bytes: *const u8) {
+    pub unsafe fn from_ptr(bytes: *const u8) -> XLogMessage {
         let mut _offset = 1;
 
         let message_header = XLogMessageHeader::from_ptr(bytes.add(_offset));
         _offset += size_of::<XLogMessageHeader>();
 
-        let record_header = XLogRecordHeader::from_bytes(bytes.add(_offset));
+        let wal_header = XLogRecordHeader::from_ptr(bytes.add(_offset));
         _offset += size_of::<XLogMessageHeader>();
 
-        let record_block_headers: Vec<XLogRecordBlockHeader> = process_wal_record(bytes.add(_offset));
+        let wal_block_headers = process_wal_record(bytes.add(_offset));
 
-        record_block_headers.iter().map(|block_header| { let fork_number = xlog_block_header.fork_flags >> 4;
-            Info {
-                block_number: xlog_block_header.block_number,
-                table_name: match xlog_block_header.rel_file_locator {
-                    Some(loc) => loc.rel_number.to_string(),
-                    None => "unknown".to_string(),
-                },
-                fork_name: match fork_number {
-                    0 => "main",
-                    1 => "fsm",
-                    2 => "vis",
-                    3 => "init",
-                    _ => panic!("invalid fork number: {}", fork_number),
-                }.to_string()
-            }; })
-
-
-        todo!();
+        XLogMessage {
+            message_header,
+            wal_header,
+            wal_block_headers
+        }
     }
 }
 

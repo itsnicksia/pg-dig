@@ -2,7 +2,8 @@ use std::{fmt, slice};
 use std::fmt::Formatter;
 use bitflags::bitflags;
 use scroll::Pread;
-use crate::postgres::common::{RmgrId, TransactionId};
+use crate::postgres::common::RmgrId;
+use crate::postgres::common::transaction_id::TransactionId;
 
 /// XLogRecordHeader contains information about the record contained in the message.
 #[repr(C)]
@@ -21,7 +22,7 @@ impl XLogRecordHeader {
         XLogRecordHeaderFlags::from_bits_retain(self.xl_info)
     }
 
-    pub unsafe fn from_bytes(bytes: *const u8) -> XLogRecordHeader {
+    pub unsafe fn from_ptr(bytes: *const u8) -> XLogRecordHeader {
         let record = slice::from_raw_parts(bytes, size_of::<XLogRecordHeader>())
             .pread_with::<XLogRecordHeader>(0, scroll::LE)
             .expect("failed to read xlog record");

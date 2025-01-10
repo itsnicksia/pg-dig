@@ -3,18 +3,10 @@
 #![allow(non_upper_case_globals)]
 
 use crate::postgres::bindings::*;
-use crate::postgres::common::info::Info;
-use crate::postgres::common::{RelFileLocator, TransactionId};
-use crate::postgres::query::exec;
-use crate::postgres::xlog_message::XLogMessageHeader;
-use crate::postgres::xlog::block_header::XLogRecordBlockHeader;
-use crate::postgres::xlog::constants::{XLR_BLOCK_ID_DATA_LONG, XLR_BLOCK_ID_DATA_SHORT, XLR_BLOCK_ID_ORIGIN, XLR_BLOCK_ID_TOPLEVEL_XID, XLR_MAX_BLOCK_ID};
-use crate::postgres::xlog::record_header::XLogRecordHeader;
-use scroll::Pread;
-use std::ffi::{c_char, CStr};
-use std::slice;
 use crate::postgres::pg_conn::friendly_exec_status;
-use crate::postgres::xlog_parser::parse_message;
+use crate::postgres::query::exec;
+use crate::postgres::xlog_message::XLogMessage;
+use std::ffi::{c_char, CStr};
 
 const replication_slot_name: &str = "physical";
 const start_lsn: &str = "0/4377DED8";
@@ -30,7 +22,7 @@ pub unsafe fn start_replication(conn: *mut PGconn) -> Result<(), String> {
     }
 }
 
-pub unsafe fn read_message<C>(conn: *mut PGconn) -> Result<Info, String> {
+pub unsafe fn read_message(conn: *mut PGconn) -> Result<XLogMessage, String> {
     let mut buffer: *mut c_char = vec![0; 1024].as_mut_ptr();
 
     loop {
@@ -39,7 +31,7 @@ pub unsafe fn read_message<C>(conn: *mut PGconn) -> Result<Info, String> {
         }
 
         match PQgetCopyData(conn, &mut buffer, 0) {
-            length if length > 0 => { },
+            length if length > 0 => {},
             -1 => return Err(String::from("end of stream")),
             -2 => {
                 let error = PQerrorMessage(conn);
@@ -50,10 +42,10 @@ pub unsafe fn read_message<C>(conn: *mut PGconn) -> Result<Info, String> {
         };
 
         match *buffer as u8 as char {
-            'w' => parse_message(&mut *buffer),
+            'w' => return Ok(XLogMessage::from_ptr(buffer as *const u8)),
             'k' => println!("*keep-alive*"),
-            record_code => panic!("unexpected record type: {}", record_code)
-        }
+            record_code => return Err(String::from(format!("unexpected record type: {}", record_code)))
+        };
     }
 }
 

@@ -2,7 +2,6 @@ use std::ffi::c_uint;
 use scroll::Pread;
 
 pub mod lsn;
-pub mod info;
 pub mod transaction_id;
 
 #[repr(C)]

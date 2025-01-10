@@ -1,16 +1,17 @@
 #![allow(unused_variables)]
 #![allow(unsafe_code)]
 
-use std::sync::{mpsc, Mutex, TryLockResult};
-use std::sync::mpsc::*;
-use std::thread;
 use bevy::asset::RenderAssetUsages;
 use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
+use pg_dig_server::block_data::Info;
 use pg_dig_server::postgres::bindings::PQfinish;
-use pg_dig_server::postgres::common::info::Info;
-use pg_dig_server::postgres::replication::{connect, read_message, start_replication};
+use pg_dig_server::postgres::connection::connect;
+use pg_dig_server::postgres::replication::{read_message, start_replication};
+use std::sync::mpsc::*;
+use std::sync::Mutex;
+use std::thread;
 
 const IMAGE_WIDTH: u32 = 512;
 const IMAGE_HEIGHT: u32 = 512;
@@ -32,7 +33,9 @@ fn main() {
         unsafe {
             let conn = connect(LOCAL_CONNECTION_STRING);
             start_replication(conn).unwrap();
-            read_message(conn, |info: Info| { tx.send(info).unwrap() }).unwrap();
+            loop {
+                read_message(conn).unwrap();
+            }
             PQfinish(conn);
         }
     });
@@ -79,7 +82,7 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     commands.spawn(Camera2d);
 
     // create an image that we are going to draw into
-    let mut image = Image::new_fill(
+    let image = Image::new_fill(
         // 2D image of size 256x256
         Extent3d {
             width: IMAGE_WIDTH,
@@ -103,3 +106,24 @@ fn setup(mut commands: Commands, mut images: ResMut<Assets<Image>>) {
     commands.spawn(Sprite::from_image(handle.clone()));
     commands.insert_resource(MyProcGenImage(handle));
 }
+//
+// let record_block_headers.iter().map(|block_header| {
+// let fork_number = block_header.fork_flags >> 4;
+// Info {
+// block_number: block_header.block_number,
+// table_name: match block_header.rel_file_locator {
+// Some(loc) => loc.rel_number.to_string(),
+// None => "unknown".to_string(),
+// },
+// fork_name: match fork_number {
+// 0 => "main",
+// 1 => "fsm",
+// 2 => "vis",
+// 3 => "init",
+// _ => panic!("invalid fork number: {}", fork_number),
+// }.to_string()
+// }
+// }
+//
+//
+// todo!();

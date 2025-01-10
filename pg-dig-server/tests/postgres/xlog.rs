@@ -18,7 +18,7 @@ fn xlog_header_from_buffer() {
 fn xlog_record_from_buffer() {
     unsafe {
         let offset = size_of::<XLogMessageHeader>() + 1;
-        let record = XLogRecordHeader::from_bytes(TEST_BUFFER.as_ptr().add(offset));
+        let record = XLogRecordHeader::from_ptr(TEST_BUFFER.as_ptr().add(offset));
 
         assert_eq!(record.xl_tot_len, 42, "total length should be 42");
         assert_eq!(record.xl_xid, TransactionId(746), "transaction id should be TransactionId(746)");
