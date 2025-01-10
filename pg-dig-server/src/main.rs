@@ -10,7 +10,7 @@ use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 use pg_dig_server::postgres::bindings::PQfinish;
 use pg_dig_server::postgres::common::info::Info;
-use pg_dig_server::postgres::replication::{connect, start_replicating, start_replication};
+use pg_dig_server::postgres::replication::{connect, read_message, start_replication};
 
 const IMAGE_WIDTH: u32 = 512;
 const IMAGE_HEIGHT: u32 = 512;
@@ -32,7 +32,7 @@ fn main() {
         unsafe {
             let conn = connect(LOCAL_CONNECTION_STRING);
             start_replication(conn).unwrap();
-            start_replicating(conn, |info: Info| { tx.send(info).unwrap() }).unwrap();
+            read_message(conn, |info: Info| { tx.send(info).unwrap() }).unwrap();
             PQfinish(conn);
         }
     });

@@ -3,10 +3,7 @@ use scroll::Pread;
 
 pub mod lsn;
 pub mod info;
-
-#[repr(C)]
-#[derive(Debug, Copy, Clone, Pread, PartialEq)]
-pub struct TransactionId(pub u32);
+pub mod transaction_id;
 
 #[repr(C)]
 #[derive(Debug, Pread, PartialEq)]
