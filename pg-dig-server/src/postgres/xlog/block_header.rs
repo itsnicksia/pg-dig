@@ -9,11 +9,11 @@ use crate::postgres::xlog::block_image_header::XLogRecordBlockImageHeader;
 #[derive(Debug)]
 pub struct XLogRecordBlockHeader {
     id: u8,
-    pub(crate) fork_flags: u8,
+    pub fork_flags: u8,
     data_length: u16,
     image_header: Option<XLogRecordBlockImageHeader>,
     pub rel_file_locator: Option<RelFileLocator>,
-    pub(crate) block_number: u32,
+    pub block_number: u32,
 }
 
 impl XLogRecordBlockHeader {
@@ -57,7 +57,7 @@ impl XLogRecordBlockHeader {
         let rel_file_locator = match flags.contains(XLogRecordBlockHeaderFlags::BKPBLOCK_SAME_REL) {
             false => {
                 let locator = slice::from_raw_parts(bytes.add(_offset), size_of::<RelFileLocator>())
-                    .pread_with::<RelFileLocator>(0, scroll::LE)
+                    .pread_with::<RelFileLocator>(0, scroll::BE)
                     .expect("failed to parse rel file locator");
 
                 _offset += size_of::<RelFileLocator>();

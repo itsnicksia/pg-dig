@@ -1,24 +1,24 @@
 #![allow(unused_variables)]
 #![allow(unsafe_code)]
-
+#![allow(dead_code)]
 use bevy::asset::RenderAssetUsages;
 use bevy::color::palettes::css;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
-use pg_dig_server::block_data::Info;
 use pg_dig_server::postgres::bindings::PQfinish;
 use pg_dig_server::postgres::connection::connect;
 use pg_dig_server::postgres::replication::{read_message, start_replication};
 use std::sync::mpsc::*;
 use std::sync::Mutex;
 use std::thread;
+use pg_dig_server::postgres::xlog_message::XLogMessage;
 
 const IMAGE_WIDTH: u32 = 512;
 const IMAGE_HEIGHT: u32 = 512;
 
 #[derive(Resource)]
 struct ReceiveChannel {
-    receiver: Mutex<Receiver<Info>>,
+    receiver: Mutex<Receiver<XLogMessage>>,
 }
 
 /// Store the image handle that we will draw to, here.
@@ -27,19 +27,42 @@ struct MyProcGenImage(Handle<Image>);
 
 const LOCAL_CONNECTION_STRING: &str = "host=localhost user=postgres dbname=postgres password=postgres replication=database";
 fn main() {
-    let (tx, rx): (Sender<Info>, Receiver<Info>) = channel();
+    let (tx, rx): (Sender<XLogMessage>, Receiver<XLogMessage>) = channel();
 
     let consumer_handle = thread::spawn(move || {
         unsafe {
             let conn = connect(LOCAL_CONNECTION_STRING);
             start_replication(conn).unwrap();
+
             loop {
-                read_message(conn).unwrap();
+                match read_message(conn) {
+                    Ok(message) => {
+                        println!("debug: {:#?}", message);
+                        tx.send(message).unwrap();
+                        break;
+                    },
+                    Err(e) => {
+                        println!("failed to read message: {}", e);
+                        break;
+                    }
+                }
             }
+
             PQfinish(conn);
         }
     });
 
+    //start_renderer(rx);
+    start_dummy_consumer(rx);
+}
+
+fn start_dummy_consumer(rx: Receiver<XLogMessage>) {
+    loop {
+        let _ = rx.recv();
+    }
+}
+
+fn start_renderer(rx: Receiver<XLogMessage>) {
     App::new()
         .insert_resource(ReceiveChannel { receiver: Mutex::new(rx) })
         .add_plugins(DefaultPlugins)
@@ -64,14 +87,23 @@ fn draw(
     let image = images.get_mut(&handle.0).expect("Image not found");
 
     match receiver.try_recv() {
-        Ok(info) => {
-            println!("info: {:#?}", info);
-                *draw_color = Color::linear_rgb(255f32, 0f32, 0f32);
-                let (x, y) = (info.block_number % IMAGE_WIDTH, info.block_number / IMAGE_WIDTH);
-                println!("writing at ({}, {})", x, y);
-                image
-                    .set_color_at(x, y, *draw_color)
-                    .unwrap();
+        Ok(message) => {
+            println!("message: {:#?}", message);
+            let block_numbers = message.get_block_numbers();
+            match block_numbers.first() {
+                Some(block_number) => {
+                    if *block_number <= IMAGE_WIDTH * IMAGE_HEIGHT {
+                        *draw_color = Color::linear_rgb(255f32, 0f32, 0f32);
+                        let (x, y) = (*block_number % IMAGE_WIDTH, *block_number / IMAGE_WIDTH);
+                        println!("writing at ({}, {})", x, y);
+                        image
+                            .set_color_at(x, y, *draw_color)
+                            .unwrap();
+                    }
+                },
+                None => {}
+            }
+
         }
         Err(_) => {}
     }

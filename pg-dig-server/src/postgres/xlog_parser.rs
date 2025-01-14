@@ -19,7 +19,7 @@ unsafe fn parse_normal_block_header(buffer: *const u8) -> (XLogRecordBlockHeader
 
 pub unsafe fn process_wal_record(buffer: *const u8) -> Vec<XLogRecordBlockHeader> {
     let mut _offset = 0;
-    let record = XLogRecordHeader::from_ptr(buffer);
+    let record = XLogRecordHeader::from_raw_bytes(buffer);
     _offset += size_of::<XLogRecordHeader>();
 
     let TransactionId(xid) = record.xl_xid;
@@ -43,14 +43,14 @@ pub unsafe fn process_wal_record(buffer: *const u8) -> Vec<XLogRecordBlockHeader
                 _offset += block_header_size;
             },
             XLR_BLOCK_ID_DATA_SHORT | XLR_BLOCK_ID_DATA_LONG => {
-                println!("finished block headers: {}", block_id);
+                println!("finished reading block headers");
                 break;
             },
             XLR_BLOCK_ID_ORIGIN => {
-                println!("ignoring unwanted origin header ()");
+                println!("skipping origin block header");
                 break;
             },
-            XLR_BLOCK_ID_TOPLEVEL_XID => println!("ignoring unwanted toplevelxid header ()"),
+            XLR_BLOCK_ID_TOPLEVEL_XID => println!("skipping toplevelxid block header"),
             _ => {
                 println!("found invalid block id: {}. skipping rest of message.", block_id);
                 break;

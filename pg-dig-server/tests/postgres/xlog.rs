@@ -1,4 +1,5 @@
-use pg_dig_server::postgres::common::{RmgrId, TransactionId};
+use pg_dig_server::postgres::common::{RmgrId};
+use pg_dig_server::postgres::common::transaction_id::TransactionId;
 use pg_dig_server::postgres::xlog_message::XLogMessageHeader;
 use pg_dig_server::postgres::xlog::record_header::XLogRecordHeader;
 
@@ -18,7 +19,7 @@ fn xlog_header_from_buffer() {
 fn xlog_record_from_buffer() {
     unsafe {
         let offset = size_of::<XLogMessageHeader>() + 1;
-        let record = XLogRecordHeader::from_ptr(TEST_BUFFER.as_ptr().add(offset));
+        let record = XLogRecordHeader::from_raw_bytes(TEST_BUFFER.as_ptr().add(offset));
 
         assert_eq!(record.xl_tot_len, 42, "total length should be 42");
         assert_eq!(record.xl_xid, TransactionId(746), "transaction id should be TransactionId(746)");

@@ -15,3 +15,13 @@ pub struct RelFileLocator {
     db_oid: c_uint,         /* database */
     pub rel_number: c_uint,      /* relation */
 }
+
+pub fn print_hex_bytes(ptr: *const u8, num_bytes: usize) {
+    unsafe {
+        for i in 0..num_bytes {
+            let byte = ptr.add(i).read(); // Read the byte at the offset
+            print!("{:02X} ", byte);     // Print the byte in hexadecimal format
+        }
+    }
+    println!(); // Newline after printing all bytes
+}

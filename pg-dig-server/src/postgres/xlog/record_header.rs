@@ -22,7 +22,7 @@ impl XLogRecordHeader {
         XLogRecordHeaderFlags::from_bits_retain(self.xl_info)
     }
 
-    pub unsafe fn from_ptr(bytes: *const u8) -> XLogRecordHeader {
+    pub unsafe fn from_raw_bytes(bytes: *const u8) -> XLogRecordHeader {
         let record = slice::from_raw_parts(bytes, size_of::<XLogRecordHeader>())
             .pread_with::<XLogRecordHeader>(0, scroll::LE)
             .expect("failed to read xlog record");
