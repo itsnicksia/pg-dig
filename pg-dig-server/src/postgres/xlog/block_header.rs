@@ -51,10 +51,8 @@ impl XLogRecordBlockHeader {
                 true => {
                     let header = XLogRecordBlockImageHeader::from_bytes(ptr.add(_offset));
                     _offset += size_of::<XLogRecordBlockImageHeader>();
-                    _offset -= size_of::<u16>();
-                    if header.hole_length.is_none() {
-                        _offset -= size_of::<u16>();
-                    }
+
+                    // FIXME: Hacky - look at padding
                     _offset -= size_of::<u8>();
                     Some(header)
                 }

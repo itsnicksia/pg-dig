@@ -57,7 +57,6 @@ pub fn xlog_block_header_from_buffer() {
             hole_offset: 0,
             bimg_info: 2,
             padding: 0,
-            hole_length: None,
         }),
         rel_file_locator: Some(RelFileLocator {
             spc_oid: 1663,

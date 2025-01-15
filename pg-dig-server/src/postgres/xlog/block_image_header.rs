@@ -22,7 +22,6 @@ pub struct XLogRecordBlockImageHeader {
     pub hole_offset: u16,
     pub bimg_info: u8,
     pub padding: u8,
-    pub hole_length: Option<u16>,
 }
 
 impl XLogRecordBlockImageHeader {
@@ -55,7 +54,6 @@ impl XLogRecordBlockImageHeader {
             hole_offset,
             bimg_info,
             padding: 0,
-            hole_length: None,
         }
     }
 }
