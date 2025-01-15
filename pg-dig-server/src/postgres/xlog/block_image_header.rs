@@ -1,28 +1,28 @@
-use std::{fmt, slice};
-use std::fmt::Formatter;
 use bitflags::bitflags;
-
+use std::fmt::Formatter;
+use std::{fmt, slice};
 
 /*
 typedef struct XLogRecordBlockImageHeader
 {
-	uint16		length;			/* number of page image bytes */
-	uint16		hole_offset;	/* number of bytes before "hole" */
-	uint8		bimg_info;		/* flag bits, see below */
+    uint16		length;			/* number of page image bytes */
+    uint16		hole_offset;	/* number of bytes before "hole" */
+    uint8		bimg_info;		/* flag bits, see below */
 
-	/*
-	 * If BKPIMAGE_HAS_HOLE and BKPIMAGE_COMPRESSED(), an
-	 * XLogRecordBlockCompressHeader struct follows.
-	 */
+    /*
+     * If BKPIMAGE_HAS_HOLE and BKPIMAGE_COMPRESSED(), an
+     * XLogRecordBlockCompressHeader struct follows.
+     */
 } XLogRecordBlockImageHeader;
  */
 #[repr(C)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct XLogRecordBlockImageHeader {
-    length: u16,
-    hole_offset: u16,
-    bimg_info: u8,
-    pub hole_length: Option<u16>
+    pub length: u16,
+    pub hole_offset: u16,
+    pub bimg_info: u8,
+    pub padding: u8,
+    pub hole_length: Option<u16>,
 }
 
 impl XLogRecordBlockImageHeader {
@@ -36,26 +36,29 @@ impl XLogRecordBlockImageHeader {
         let length = u16::from_le_bytes(
             slice::from_raw_parts(bytes, size_of::<u16>())
                 .try_into()
-                .expect("failed to parse length"));
+                .expect("failed to parse length"),
+        );
         _offset += size_of::<u16>();
 
         let hole_offset = u16::from_le_bytes(
             slice::from_raw_parts(bytes.add(_offset), size_of::<u16>())
                 .try_into()
-                .expect("failed to parse hole_offset"));
+                .expect("failed to parse hole_offset"),
+        );
         _offset += size_of::<u16>();
 
         let bimg_info = *bytes.add(_offset);
+        _offset += size_of::<u8>();
 
         XLogRecordBlockImageHeader {
             length,
             hole_offset,
             bimg_info,
-            hole_length: Some(0)
+            padding: 0,
+            hole_length: None,
         }
     }
 }
-
 
 bitflags! {
     /*
@@ -78,11 +81,11 @@ bitflags! {
     }
 }
 
-
 impl fmt::Display for XLogRecordBlockImageHeaderFlags {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f,
-               r#" XLogRecordBlockImageHeaderFlags(
+        write!(
+            f,
+            r#" XLogRecordBlockImageHeaderFlags(
     raw: {:08b}
     BKPIMAGE_HAS_HOLE: {}
     BKPIMAGE_APPLY: {}
@@ -90,12 +93,12 @@ impl fmt::Display for XLogRecordBlockImageHeaderFlags {
     BKPIMAGE_COMPRESS_LZ4: {}
     BKPIMAGE_COMPRESS_ZSTD: {}
 )"#,
-               self.bits(),
-               self.contains(XLogRecordBlockImageHeaderFlags::BKPIMAGE_HAS_HOLE),
-               self.contains(XLogRecordBlockImageHeaderFlags::BKPIMAGE_APPLY),
-               self.contains(XLogRecordBlockImageHeaderFlags::BKPIMAGE_COMPRESS_PGLZ),
-               self.contains(XLogRecordBlockImageHeaderFlags::BKPIMAGE_COMPRESS_LZ4),
-               self.contains(XLogRecordBlockImageHeaderFlags::BKPIMAGE_COMPRESS_ZSTD)
+            self.bits(),
+            self.contains(XLogRecordBlockImageHeaderFlags::BKPIMAGE_HAS_HOLE),
+            self.contains(XLogRecordBlockImageHeaderFlags::BKPIMAGE_APPLY),
+            self.contains(XLogRecordBlockImageHeaderFlags::BKPIMAGE_COMPRESS_PGLZ),
+            self.contains(XLogRecordBlockImageHeaderFlags::BKPIMAGE_COMPRESS_LZ4),
+            self.contains(XLogRecordBlockImageHeaderFlags::BKPIMAGE_COMPRESS_ZSTD)
         )
     }
 }

@@ -1,16 +1,19 @@
+#![allow(unused_variables)]
+#![allow(dead_code)]
+
 /* XLOG info values for XLOG rmgr */
 pub const XLOG_CHECKPOINT_SHUTDOWN: u32 = 0x00;
-pub const XLOG_CHECKPOINT_ONLINE: u32   = 0x10;
-pub const XLOG_NOOP: u32                = 0x20;
-pub const XLOG_NEXTOID: u32             = 0x30;
-pub const XLOG_SWITCH: u32              = 0x40;
-pub const XLOG_BACKUP_END: u32          = 0x50;
-pub const XLOG_PARAMETER_CHANGE: u32    = 0x60;
-pub const XLOG_RESTORE_POINT: u32       = 0x70;
-pub const XLOG_FPW_CHANGE: u32          = 0x80;
-pub const XLOG_END_OF_RECOVERY: u32     = 0x90;
-pub const XLOG_FPI_FOR_HINT: u32        = 0xA0;
-pub const XLOG_FPI: u32	                = 0xB0;
+pub const XLOG_CHECKPOINT_ONLINE: u32 = 0x10;
+pub const XLOG_NOOP: u32 = 0x20;
+pub const XLOG_NEXTOID: u32 = 0x30;
+pub const XLOG_SWITCH: u32 = 0x40;
+pub const XLOG_BACKUP_END: u32 = 0x50;
+pub const XLOG_PARAMETER_CHANGE: u32 = 0x60;
+pub const XLOG_RESTORE_POINT: u32 = 0x70;
+pub const XLOG_FPW_CHANGE: u32 = 0x80;
+pub const XLOG_END_OF_RECOVERY: u32 = 0x90;
+pub const XLOG_FPI_FOR_HINT: u32 = 0xA0;
+pub const XLOG_FPI: u32 = 0xB0;
 
 // PG_RMGR(RM_XLOG_ID, "XLOG", xlog_redo, xlog_desc, xlog_identify, NULL, NULL, NULL, xlog_decode)
 // PG_RMGR(RM_XACT_ID, "Transaction", xact_redo, xact_desc, xact_identify, NULL, NULL, NULL, xact_decode)

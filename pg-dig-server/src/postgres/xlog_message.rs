@@ -1,11 +1,9 @@
-use crate::postgres::platform::get_platform_endianness;
+use crate::postgres::common::lsn::Lsn;
 use crate::postgres::xlog::block_header::XLogRecordBlockHeader;
 use crate::postgres::xlog::record_header::XLogRecordHeader;
 use crate::postgres::xlog_parser::process_wal_record;
 use scroll::Pread;
 use std::slice;
-use crate::postgres::common::lsn::Lsn;
-use crate::postgres::common::print_hex_bytes;
 
 /// XLogMessage contains the relevant parts of the replication message for monitoring.
 ///
@@ -15,7 +13,7 @@ use crate::postgres::common::print_hex_bytes;
 pub struct XLogMessage {
     message_header: XLogMessageHeader,
     pub wal_header: XLogRecordHeader,
-    pub wal_block_headers: Vec<XLogRecordBlockHeader>
+    pub wal_block_headers: Vec<XLogRecordBlockHeader>,
 }
 
 impl XLogMessage {
@@ -26,22 +24,26 @@ impl XLogMessage {
             .collect()
     }
 
-    pub unsafe fn from_ptr(bytes: *const u8) -> XLogMessage {
+    pub unsafe fn from_ptr(ptr: *const u8) -> XLogMessage {
         let mut _offset = 1;
 
-        let message_header = XLogMessageHeader::from_ptr(bytes.add(_offset));
-        println!("start_lsn: {}, end_lsn: {}", Lsn::from_u64(message_header.start_lsn), Lsn::from_u64(message_header.end_lsn));
+        let message_header = XLogMessageHeader::from_raw_ptr(ptr.add(_offset));
+        println!(
+            "start_lsn: {}, end_lsn: {}",
+            Lsn::from_u64(message_header.start_lsn),
+            Lsn::from_u64(message_header.end_lsn)
+        );
         _offset += size_of::<XLogMessageHeader>();
 
-        let wal_header = XLogRecordHeader::from_raw_bytes(bytes.add(_offset));
+        let wal_header = XLogRecordHeader::from_raw_ptr(ptr.add(_offset));
         _offset += size_of::<XLogRecordHeader>();
 
-        let wal_block_headers = process_wal_record(bytes.add(_offset));
+        let wal_block_headers = process_wal_record(ptr.add(_offset));
 
         XLogMessage {
             message_header,
             wal_header,
-            wal_block_headers
+            wal_block_headers,
         }
     }
 }
@@ -60,8 +62,7 @@ pub struct XLogMessageHeader {
 }
 
 impl XLogMessageHeader {
-    pub unsafe fn from_ptr(ptr: *const u8) -> XLogMessageHeader {
-        print_hex_bytes(ptr, 24);
+    pub unsafe fn from_raw_ptr(ptr: *const u8) -> XLogMessageHeader {
         slice::from_raw_parts(ptr, size_of::<XLogMessageHeader>())
             .pread_with::<XLogMessageHeader>(0, scroll::BE)
             .expect("failed to read xlog record")
