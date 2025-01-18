@@ -7,7 +7,6 @@ use crate::postgres::xlog::constants::{
 };
 use crate::postgres::xlog::record_header::XLogRecordHeader;
 use crate::stop;
-use crate::util::debug::print_hex_bytes_for_test;
 use log::info;
 
 unsafe fn parse_normal_block_header(buffer: *const u8) -> (XLogRecordBlockHeader, usize) {
@@ -53,7 +52,6 @@ pub unsafe fn process_wal_record(buffer: *const u8) -> Vec<XLogRecordBlockHeader
                 println!("{:#?}", block_header);
                 block_headers.push(block_header);
                 _offset += block_header_size;
-                stop!("testing!");
             }
             XLR_BLOCK_ID_DATA_SHORT | XLR_BLOCK_ID_DATA_LONG => {
                 println!("finished reading block headers");

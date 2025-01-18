@@ -65,7 +65,7 @@ impl XLogRecordBlockHeader {
                 let locator = slice::from_raw_parts(ptr.add(_offset), size_of::<RelFileLocator>())
                     .pread_with::<RelFileLocator>(0, scroll::LE)
                     .expect("failed to parse rel file locator");
-                print_hex_bytes(ptr.add(_offset), size_of::<RelFileLocator>());
+                //print_hex_bytes(ptr.add(_offset), size_of::<RelFileLocator>());
                 _offset += size_of::<RelFileLocator>();
 
                 Some(locator)

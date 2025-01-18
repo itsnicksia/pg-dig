@@ -1,19 +1,31 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
+use phf::phf_map;
 
-/* XLOG info values for XLOG rmgr */
-pub const XLOG_CHECKPOINT_SHUTDOWN: u32 = 0x00;
-pub const XLOG_CHECKPOINT_ONLINE: u32 = 0x10;
-pub const XLOG_NOOP: u32 = 0x20;
-pub const XLOG_NEXTOID: u32 = 0x30;
-pub const XLOG_SWITCH: u32 = 0x40;
-pub const XLOG_BACKUP_END: u32 = 0x50;
-pub const XLOG_PARAMETER_CHANGE: u32 = 0x60;
-pub const XLOG_RESTORE_POINT: u32 = 0x70;
-pub const XLOG_FPW_CHANGE: u32 = 0x80;
-pub const XLOG_END_OF_RECOVERY: u32 = 0x90;
-pub const XLOG_FPI_FOR_HINT: u32 = 0xA0;
-pub const XLOG_FPI: u32 = 0xB0;
+pub const RMGR_MAP: phf::Map<u8, &'static str> = phf_map! {
+    0u8 => "XLOG",
+    1u8 => "Transaction",
+    2u8 => "Storage",
+    3u8 => "CLOG",
+    4u8 => "Database",
+    5u8 => "Tablespace",
+    6u8 => "MultiXact",
+    7u8 => "RelMap",
+    8u8 => "Standby",
+    9u8 => "Heap2",
+    10u8 => "Heap",
+    11u8 => "Btree",
+    12u8 => "Hash",
+    13u8 => "Gin",
+    14u8 => "Gist",
+    15u8 => "Sequence",
+    16u8 => "SPGist",
+    17u8 => "BRIN",
+    18u8 => "CommitTs",
+    19u8 => "ReplicationOrigin",
+    20u8 => "Generic",
+    21u8 => "LogicalMessage",
+};
 
 // PG_RMGR(RM_XLOG_ID, "XLOG", xlog_redo, xlog_desc, xlog_identify, NULL, NULL, NULL, xlog_decode)
 // PG_RMGR(RM_XACT_ID, "Transaction", xact_redo, xact_desc, xact_identify, NULL, NULL, NULL, xact_decode)
@@ -37,3 +49,17 @@ pub const XLOG_FPI: u32 = 0xB0;
 // PG_RMGR(RM_REPLORIGIN_ID, "ReplicationOrigin", replorigin_redo, replorigin_desc, replorigin_identify, NULL, NULL, NULL, NULL)
 // PG_RMGR(RM_GENERIC_ID, "Generic", generic_redo, generic_desc, generic_identify, NULL, NULL, generic_mask, NULL)
 // PG_RMGR(RM_LOGICALMSG_ID, "LogicalMessage", logicalmsg_redo, logicalmsg_desc, logicalmsg_identify, NULL, NULL, NULL, logicalmsg_decode)
+
+/* XLOG info values for XLOG rmgr */
+pub const XLOG_CHECKPOINT_SHUTDOWN: u32 = 0x00;
+pub const XLOG_CHECKPOINT_ONLINE: u32 = 0x10;
+pub const XLOG_NOOP: u32 = 0x20;
+pub const XLOG_NEXTOID: u32 = 0x30;
+pub const XLOG_SWITCH: u32 = 0x40;
+pub const XLOG_BACKUP_END: u32 = 0x50;
+pub const XLOG_PARAMETER_CHANGE: u32 = 0x60;
+pub const XLOG_RESTORE_POINT: u32 = 0x70;
+pub const XLOG_FPW_CHANGE: u32 = 0x80;
+pub const XLOG_END_OF_RECOVERY: u32 = 0x90;
+pub const XLOG_FPI_FOR_HINT: u32 = 0xA0;
+pub const XLOG_FPI: u32 = 0xB0;

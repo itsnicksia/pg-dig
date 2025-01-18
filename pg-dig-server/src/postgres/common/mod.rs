@@ -3,6 +3,7 @@ use std::ffi::c_uint;
 
 pub mod lsn;
 pub mod transaction_id;
+pub mod rmgr;
 
 #[repr(C)]
 #[derive(Debug, Pread, PartialEq)]

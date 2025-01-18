@@ -1,22 +1,49 @@
 use crate::postgres::common::lsn::Lsn;
 use crate::postgres::xlog::block_header::XLogRecordBlockHeader;
-use crate::postgres::xlog::record_header::XLogRecordHeader;
 use crate::postgres::xlog_parser::process_wal_record;
 use scroll::Pread;
-use std::slice;
+use std::{fmt, slice};
+use std::fmt::Formatter;
+use crate::postgres::common::rmgr;
+use crate::postgres::xlog::record_header::XLogRecordHeader;
 
 /// XLogMessage contains the relevant parts of the replication message for monitoring.
 ///
 /// We only read headers to avoid reading user data.
 #[repr(C)]
-#[derive(Debug)]
 pub struct XLogMessage {
     message_header: XLogMessageHeader,
     pub wal_header: XLogRecordHeader,
     pub wal_block_headers: Vec<XLogRecordBlockHeader>,
 }
 
+impl fmt::Display for XLogMessage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            r#"
+message:
+    start_lsn: {}
+    end_lsn: {}
+    message_time: {}
+wal_header:
+    transaction id: {}
+    resource manager: {} ({})
+block_header:
+"#,
+            Lsn::from_u64(self.message_header.start_lsn),
+            Lsn::from_u64(self.message_header.end_lsn),
+            "NYI",
+            self.wal_header.xl_xid.0.to_string(),
+            rmgr::RMGR_MAP[&self.wal_header.xl_rmid.0],
+            self.wal_header.xl_rmid.0
+        )
+    }
+}
+
 impl XLogMessage {
+
+
     pub fn get_block_numbers(&self) -> Vec<u32> {
         self.wal_block_headers
             .iter()
@@ -28,11 +55,6 @@ impl XLogMessage {
         let mut _offset = 1;
 
         let message_header = XLogMessageHeader::from_raw_ptr(ptr.add(_offset));
-        println!(
-            "start_lsn: {}, end_lsn: {}",
-            Lsn::from_u64(message_header.start_lsn),
-            Lsn::from_u64(message_header.end_lsn)
-        );
         _offset += size_of::<XLogMessageHeader>();
 
         let wal_header = XLogRecordHeader::from_raw_ptr(ptr.add(_offset));

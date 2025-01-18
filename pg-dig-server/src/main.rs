@@ -37,9 +37,9 @@ fn main() {
             loop {
                 match read_message(conn) {
                     Ok(message) => {
-                        println!("debug: {:#?}", message);
+                        println!("debug: {}", message);
                         tx.send(message).unwrap();
-                        break;
+                        //break;
                     },
                     Err(e) => {
                         println!("failed to read message: {}", e);
@@ -88,7 +88,7 @@ fn draw(
 
     match receiver.try_recv() {
         Ok(message) => {
-            println!("message: {:#?}", message);
+            println!("message: {}", message);
             let block_numbers = message.get_block_numbers();
             match block_numbers.first() {
                 Some(block_number) => {
