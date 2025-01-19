@@ -9,7 +9,7 @@ use crate::postgres::xlog_message::XLogMessage;
 use std::ffi::{c_char, CStr};
 
 const replication_slot_name: &str = "physical";
-const start_lsn: &str = "0/10020F0";
+const start_lsn: &str = "0/1000000";
 
 pub unsafe fn start_replication(conn: *mut PGconn) -> Result<(), String> {
     let stmt = format!("START_REPLICATION SLOT {} PHYSICAL {}", replication_slot_name, start_lsn);

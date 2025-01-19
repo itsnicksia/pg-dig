@@ -5,6 +5,7 @@ use scroll::Pread;
 use std::{fmt, slice};
 use std::fmt::Formatter;
 use crate::postgres::common::rmgr;
+use crate::postgres::common::rmgr::get_simple_rmgr_info;
 use crate::postgres::xlog::record_header::XLogRecordHeader;
 
 /// XLogMessage contains the relevant parts of the replication message for monitoring.
@@ -29,21 +30,21 @@ message:
 wal_header:
     transaction id: {}
     resource manager: {} ({})
-block_header:
+block_headers:
+    {}
 "#,
             Lsn::from_u64(self.message_header.start_lsn),
             Lsn::from_u64(self.message_header.end_lsn),
             "NYI",
             self.wal_header.xl_xid.0.to_string(),
-            rmgr::RMGR_MAP[&self.wal_header.xl_rmid.0],
-            self.wal_header.xl_rmid.0
+            get_simple_rmgr_info(self.wal_header.xl_rmid.0, self.wal_header.read_rmgr_info_bytes()).rmgr_name,
+            self.wal_header.xl_rmid.0,
+            self.wal_block_headers.iter().map(|block_header| format!("{})", block_header)).collect::<Vec<_>>().join("\n    ")
         )
     }
 }
 
 impl XLogMessage {
-
-
     pub fn get_block_numbers(&self) -> Vec<u32> {
         self.wal_block_headers
             .iter()

@@ -22,6 +22,10 @@ impl XLogRecordHeader {
         XLogRecordHeaderFlags::from_bits_retain(self.xl_info)
     }
 
+    pub fn read_rmgr_info_bytes(&self) -> u8 {
+        (self.xl_info & 0xF0) >> 4
+    }
+
     pub unsafe fn from_raw_ptr(bytes: *const u8) -> XLogRecordHeader {
         let record = slice::from_raw_parts(bytes, size_of::<XLogRecordHeader>())
             .pread_with::<XLogRecordHeader>(0, scroll::LE)

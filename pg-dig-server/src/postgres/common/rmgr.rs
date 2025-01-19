@@ -1,54 +1,117 @@
 #![allow(unused_variables)]
 #![allow(dead_code)]
+
+use std::fmt;
 use phf::phf_map;
 
-pub const RMGR_MAP: phf::Map<u8, &'static str> = phf_map! {
-    0u8 => "XLOG",
-    1u8 => "Transaction",
-    2u8 => "Storage",
-    3u8 => "CLOG",
-    4u8 => "Database",
-    5u8 => "Tablespace",
-    6u8 => "MultiXact",
-    7u8 => "RelMap",
-    8u8 => "Standby",
-    9u8 => "Heap2",
-    10u8 => "Heap",
-    11u8 => "Btree",
-    12u8 => "Hash",
-    13u8 => "Gin",
-    14u8 => "Gist",
-    15u8 => "Sequence",
-    16u8 => "SPGist",
-    17u8 => "BRIN",
-    18u8 => "CommitTs",
-    19u8 => "ReplicationOrigin",
-    20u8 => "Generic",
-    21u8 => "LogicalMessage",
-};
+#[repr(u8)]
+enum ResourceManager {
+    XLOG = 0,
+    Transaction = 1,
+    Storage = 2,
+    CLOG = 3,
+    Database = 4,
+    Tablespace = 5,
+    MultiXact = 6,
+    RelMap = 7,
+    Standby = 8,
+    Heap2 = 9,
+    Heap = 10,
+    Btree = 11,
+    Hash = 12,
+    Gin = 13,
+    Gist = 14,
+    Sequence = 15,
+    SPGist = 16,
+    BRIN = 17,
+    CommitTs = 18,
+    ReplicationOrigin = 19,
+    Generic = 20,
+    LogicalMessage = 21,
+}
 
-// PG_RMGR(RM_XLOG_ID, "XLOG", xlog_redo, xlog_desc, xlog_identify, NULL, NULL, NULL, xlog_decode)
-// PG_RMGR(RM_XACT_ID, "Transaction", xact_redo, xact_desc, xact_identify, NULL, NULL, NULL, xact_decode)
-// PG_RMGR(RM_SMGR_ID, "Storage", smgr_redo, smgr_desc, smgr_identify, NULL, NULL, NULL, NULL)
-// PG_RMGR(RM_CLOG_ID, "CLOG", clog_redo, clog_desc, clog_identify, NULL, NULL, NULL, NULL)
-// PG_RMGR(RM_DBASE_ID, "Database", dbase_redo, dbase_desc, dbase_identify, NULL, NULL, NULL, NULL)
-// PG_RMGR(RM_TBLSPC_ID, "Tablespace", tblspc_redo, tblspc_desc, tblspc_identify, NULL, NULL, NULL, NULL)
-// PG_RMGR(RM_MULTIXACT_ID, "MultiXact", multixact_redo, multixact_desc, multixact_identify, NULL, NULL, NULL, NULL)
-// PG_RMGR(RM_RELMAP_ID, "RelMap", relmap_redo, relmap_desc, relmap_identify, NULL, NULL, NULL, NULL)
-// PG_RMGR(RM_STANDBY_ID, "Standby", standby_redo, standby_desc, standby_identify, NULL, NULL, NULL, standby_decode)
-// PG_RMGR(RM_HEAP2_ID, "Heap2", heap2_redo, heap2_desc, heap2_identify, NULL, NULL, heap_mask, heap2_decode)
-// PG_RMGR(RM_HEAP_ID, "Heap", heap_redo, heap_desc, heap_identify, NULL, NULL, heap_mask, heap_decode)
-// PG_RMGR(RM_BTREE_ID, "Btree", btree_redo, btree_desc, btree_identify, btree_xlog_startup, btree_xlog_cleanup, btree_mask, NULL)
-// PG_RMGR(RM_HASH_ID, "Hash", hash_redo, hash_desc, hash_identify, NULL, NULL, hash_mask, NULL)
-// PG_RMGR(RM_GIN_ID, "Gin", gin_redo, gin_desc, gin_identify, gin_xlog_startup, gin_xlog_cleanup, gin_mask, NULL)
-// PG_RMGR(RM_GIST_ID, "Gist", gist_redo, gist_desc, gist_identify, gist_xlog_startup, gist_xlog_cleanup, gist_mask, NULL)
-// PG_RMGR(RM_SEQ_ID, "Sequence", seq_redo, seq_desc, seq_identify, NULL, NULL, seq_mask, NULL)
-// PG_RMGR(RM_SPGIST_ID, "SPGist", spg_redo, spg_desc, spg_identify, spg_xlog_startup, spg_xlog_cleanup, spg_mask, NULL)
-// PG_RMGR(RM_BRIN_ID, "BRIN", brin_redo, brin_desc, brin_identify, NULL, NULL, brin_mask, NULL)
-// PG_RMGR(RM_COMMIT_TS_ID, "CommitTs", commit_ts_redo, commit_ts_desc, commit_ts_identify, NULL, NULL, NULL, NULL)
-// PG_RMGR(RM_REPLORIGIN_ID, "ReplicationOrigin", replorigin_redo, replorigin_desc, replorigin_identify, NULL, NULL, NULL, NULL)
-// PG_RMGR(RM_GENERIC_ID, "Generic", generic_redo, generic_desc, generic_identify, NULL, NULL, generic_mask, NULL)
-// PG_RMGR(RM_LOGICALMSG_ID, "LogicalMessage", logicalmsg_redo, logicalmsg_desc, logicalmsg_identify, NULL, NULL, NULL, logicalmsg_decode)
+impl ResourceManager {
+    pub(crate) fn get_record_type(&self, rmgr_info: u8) -> String {
+        "NYI".to_string()
+    }
+}
+
+pub struct SimpleRmgrInfo {
+    pub rmgr_name: String,
+    pub record_type: String
+}
+
+pub fn get_simple_rmgr_info(rmgr_id: u8, rmgr_info: u8) -> SimpleRmgrInfo {
+    let resource_manager = ResourceManager::try_from(rmgr_id).expect("invalid rmgr_id");
+    let record_type = resource_manager.get_record_type(rmgr_info);
+    SimpleRmgrInfo {
+        rmgr_name: resource_manager.to_string(),
+        record_type: "NYI".to_string()
+    }
+}
+
+impl TryFrom<u8> for ResourceManager {
+    type Error = &'static str;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(ResourceManager::XLOG),
+            1 => Ok(ResourceManager::Transaction),
+            2 => Ok(ResourceManager::Storage),
+            3 => Ok(ResourceManager::CLOG),
+            4 => Ok(ResourceManager::Database),
+            5 => Ok(ResourceManager::Tablespace),
+            6 => Ok(ResourceManager::MultiXact),
+            7 => Ok(ResourceManager::RelMap),
+            8 => Ok(ResourceManager::Standby),
+            9 => Ok(ResourceManager::Heap2),
+            10 => Ok(ResourceManager::Heap),
+            11 => Ok(ResourceManager::Btree),
+            12 => Ok(ResourceManager::Hash),
+            13 => Ok(ResourceManager::Gin),
+            14 => Ok(ResourceManager::Gist),
+            15 => Ok(ResourceManager::Sequence),
+            16 => Ok(ResourceManager::SPGist),
+            17 => Ok(ResourceManager::BRIN),
+            18 => Ok(ResourceManager::CommitTs),
+            19 => Ok(ResourceManager::ReplicationOrigin),
+            20 => Ok(ResourceManager::Generic),
+            21 => Ok(ResourceManager::LogicalMessage),
+            _ => Err("Invalid value for ResourceManager"),
+        }
+    }
+}
+
+impl fmt::Display for ResourceManager {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            ResourceManager::XLOG => "XLOG",
+            ResourceManager::Transaction => "Transaction",
+            ResourceManager::Storage => "Storage",
+            ResourceManager::CLOG => "CLOG",
+            ResourceManager::Database => "Database",
+            ResourceManager::Tablespace => "Tablespace",
+            ResourceManager::MultiXact => "MultiXact",
+            ResourceManager::RelMap => "RelMap",
+            ResourceManager::Standby => "Standby",
+            ResourceManager::Heap2 => "Heap2",
+            ResourceManager::Heap => "Heap",
+            ResourceManager::Btree => "Btree",
+            ResourceManager::Hash => "Hash",
+            ResourceManager::Gin => "Gin",
+            ResourceManager::Gist => "Gist",
+            ResourceManager::Sequence => "Sequence",
+            ResourceManager::SPGist => "SPGist",
+            ResourceManager::BRIN => "BRIN",
+            ResourceManager::CommitTs => "CommitTs",
+            ResourceManager::ReplicationOrigin => "ReplicationOrigin",
+            ResourceManager::Generic => "Generic",
+            ResourceManager::LogicalMessage => "LogicalMessage",
+        };
+        write!(f, "{}", name)
+    }
+}
+
 
 /* XLOG info values for XLOG rmgr */
 pub const XLOG_CHECKPOINT_SHUTDOWN: u32 = 0x00;

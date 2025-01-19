@@ -1,10 +1,12 @@
-use crate::postgres::common::RelFileLocator;
+use crate::postgres::common::{rmgr, RelFileLocator};
 use crate::postgres::xlog::block_image_header::XLogRecordBlockImageHeader;
 use crate::util::debug::print_hex_bytes;
 use bitflags::bitflags;
 use scroll::Pread;
 use std::fmt::Formatter;
 use std::{fmt, ptr, slice};
+use crate::postgres::common::lsn::Lsn;
+use crate::postgres::xlog_message::XLogMessage;
 
 #[repr(C)]
 #[derive(Debug, PartialEq)]
@@ -15,6 +17,18 @@ pub struct XLogRecordBlockHeader {
     pub image_header: Option<XLogRecordBlockImageHeader>,
     pub rel_file_locator: Option<RelFileLocator>,
     pub block_number: u32,
+}
+
+impl fmt::Display for XLogRecordBlockHeader {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}: length: {} | (TODO: REL) | block number: {}",
+            self.id,
+            self.data_length,
+            self.block_number,
+        )
+    }
 }
 
 impl XLogRecordBlockHeader {

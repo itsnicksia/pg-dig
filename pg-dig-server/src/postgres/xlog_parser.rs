@@ -49,7 +49,7 @@ pub unsafe fn process_wal_record(buffer: *const u8) -> Vec<XLogRecordBlockHeader
         match block_id {
             0..XLR_MAX_BLOCK_ID => {
                 let (block_header, block_header_size) = parse_normal_block_header(buffer);
-                println!("{:#?}", block_header);
+                //println!("{:#?}", block_header);
                 block_headers.push(block_header);
                 _offset += block_header_size;
             }
