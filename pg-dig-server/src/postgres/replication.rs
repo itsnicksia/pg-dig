@@ -46,7 +46,9 @@ pub unsafe fn read_message(conn: *mut PGconn) -> Result<XLogMessage, String> {
         // Handle message
         match *buffer_ptr as u8 as char {
             'w' => match XLogMessage::from_ptr(buffer_ptr.add(1) as *const u8) {
-                Ok(result) => return Ok(result),
+                Ok(result) => {
+                    return Ok(result)
+                },
                 Err(msg)=> println!("{}", msg)
             } ,
             'k' => println!("*keep-alive*"),

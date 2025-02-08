@@ -81,7 +81,7 @@ impl TryFrom<RmgrId> for ResourceManager {
             19 => Ok(ResourceManager::ReplicationOrigin),
             20 => Ok(ResourceManager::Generic),
             21 => Ok(ResourceManager::LogicalMessage),
-            _ => Err("Invalid value for ResourceManager"),
+            id => Err("Invalid value for ResourceManager"),
         }
     }
 }

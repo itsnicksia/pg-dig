@@ -60,11 +60,18 @@ impl XLogMessage {
         _offset += size_of::<XLogMessageHeader>();
 
         let wal_header = XLogRecordHeader::from_raw_ptr(ptr.add(_offset));
-        let rmgr = ResourceManager::try_from(wal_header.xl_rmid.clone()).expect("failed to determine rmgr");
         _offset += size_of::<XLogRecordHeader>();
 
-        if !matches!(rmgr, ResourceManager::Heap) {
-            return Err(format!("{} not yet handled", rmgr))
+        let rmgr = ResourceManager::try_from(wal_header.xl_rmid.clone());
+
+        if rmgr.is_err() {
+            return Err("unknown rmgr".to_string());
+        }
+
+        let rm = rmgr?;
+
+        if !matches!(rm, ResourceManager::Heap) {
+            return Err(format!("{} not yet handled", rm))
         }
 
         let wal_block_headers = process_wal_record(ptr.add(_offset));
