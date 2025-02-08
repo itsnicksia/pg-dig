@@ -1,9 +1,9 @@
 use crate::postgres::common::transaction_id::TransactionId;
-use crate::postgres::common::RmgrId;
 use bitflags::bitflags;
 use scroll::Pread;
 use std::fmt::Formatter;
 use std::{fmt, slice};
+use crate::postgres::common::rmgr::RmgrId;
 
 /// XLogRecordHeader contains information about the record contained in the message.
 #[repr(C)]

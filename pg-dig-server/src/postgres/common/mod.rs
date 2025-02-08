@@ -7,10 +7,6 @@ pub mod rmgr;
 
 #[repr(C)]
 #[derive(Debug, Pread, PartialEq)]
-pub struct RmgrId(pub u8);
-
-#[repr(C)]
-#[derive(Debug, Pread, PartialEq)]
 pub struct RelFileLocator {
     pub spc_oid: c_uint,    /* tablespace */
     pub db_oid: c_uint,     /* database */

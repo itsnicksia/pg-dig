@@ -6,7 +6,6 @@ use crate::postgres::xlog::constants::{
     XLR_BLOCK_ID_TOPLEVEL_XID, XLR_MAX_BLOCK_ID,
 };
 use crate::postgres::xlog::record_header::XLogRecordHeader;
-use crate::stop;
 use log::info;
 
 unsafe fn parse_normal_block_header(buffer: *const u8) -> (XLogRecordBlockHeader, usize) {
@@ -46,6 +45,7 @@ pub unsafe fn process_wal_record(buffer: *const u8) -> Vec<XLogRecordBlockHeader
     /* peek at the block header id */
     loop {
         let block_id = *buffer.add(_offset);
+        println!("block {}", block_id);
         match block_id {
             0..XLR_MAX_BLOCK_ID => {
                 let (block_header, block_header_size) = parse_normal_block_header(buffer);

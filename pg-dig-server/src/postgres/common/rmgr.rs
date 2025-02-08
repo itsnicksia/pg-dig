@@ -2,10 +2,14 @@
 #![allow(dead_code)]
 
 use std::fmt;
-use phf::phf_map;
+use scroll::Pread;
+
+#[repr(C)]
+#[derive(Clone, Debug, Pread, PartialEq)]
+pub struct RmgrId(pub u8);
 
 #[repr(u8)]
-enum ResourceManager {
+pub enum ResourceManager {
     XLOG = 0,
     Transaction = 1,
     Storage = 2,
@@ -41,7 +45,7 @@ pub struct SimpleRmgrInfo {
     pub record_type: String
 }
 
-pub fn get_simple_rmgr_info(rmgr_id: u8, rmgr_info: u8) -> SimpleRmgrInfo {
+pub fn get_simple_rmgr_info(rmgr_id: RmgrId, rmgr_info: u8) -> SimpleRmgrInfo {
     let resource_manager = ResourceManager::try_from(rmgr_id).expect("invalid rmgr_id");
     let record_type = resource_manager.get_record_type(rmgr_info);
     SimpleRmgrInfo {
@@ -50,11 +54,11 @@ pub fn get_simple_rmgr_info(rmgr_id: u8, rmgr_info: u8) -> SimpleRmgrInfo {
     }
 }
 
-impl TryFrom<u8> for ResourceManager {
+impl TryFrom<RmgrId> for ResourceManager {
     type Error = &'static str;
 
-    fn try_from(value: u8) -> Result<Self, Self::Error> {
-        match value {
+    fn try_from(value: RmgrId) -> Result<Self, Self::Error> {
+        match value.0 {
             0 => Ok(ResourceManager::XLOG),
             1 => Ok(ResourceManager::Transaction),
             2 => Ok(ResourceManager::Storage),

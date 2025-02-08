@@ -31,6 +31,7 @@ pub unsafe fn read_message(conn: *mut PGconn) -> Result<XLogMessage, String> {
             return Err(String::from("failed to consume input"))
         }
 
+        // Handle errors
         match PQgetCopyData(conn, &mut buffer_ptr, 0) {
             length if length > 0 => {},
             -1 => return Err(String::from("end of stream")),
@@ -42,8 +43,12 @@ pub unsafe fn read_message(conn: *mut PGconn) -> Result<XLogMessage, String> {
             unknown_code => panic!("unknown code from PQgetCopyData: {}", unknown_code)
         };
 
+        // Handle message
         match *buffer_ptr as u8 as char {
-            'w' => return Ok(XLogMessage::from_ptr(buffer_ptr as *const u8)),
+            'w' => match XLogMessage::from_ptr(buffer_ptr.add(1) as *const u8) {
+                Ok(result) => return Ok(result),
+                Err(msg)=> println!("{}", msg)
+            } ,
             'k' => println!("*keep-alive*"),
             record_code => return Err(String::from(format!("unexpected record type: {}", record_code)))
         };

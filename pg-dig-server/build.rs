@@ -2,10 +2,12 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    // Tell cargo to look for shared libraries in the specified directory
-    println!("cargo:rustc-link-search=/usr/include/postgresql");
-
-    println!("cargo:rustc-link-lib=pq");
+    if cfg!(unix) {
+        println!("cargo:rustc-link-search=/usr/include/postgresql");
+        println!("cargo:rustc-link-lib=pq");
+    } else {
+        panic!("Only unix supported");
+    }
 
     // The bindgen::Builder is the main entry point
     // to bindgen, and lets you build up options for

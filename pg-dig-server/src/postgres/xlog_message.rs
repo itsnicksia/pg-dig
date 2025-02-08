@@ -1,19 +1,18 @@
 use crate::postgres::common::lsn::Lsn;
+use crate::postgres::common::rmgr::{get_simple_rmgr_info, ResourceManager};
 use crate::postgres::xlog::block_header::XLogRecordBlockHeader;
+use crate::postgres::xlog::record_header::XLogRecordHeader;
 use crate::postgres::xlog_parser::process_wal_record;
 use scroll::Pread;
-use std::{fmt, slice};
 use std::fmt::Formatter;
-use crate::postgres::common::rmgr;
-use crate::postgres::common::rmgr::get_simple_rmgr_info;
-use crate::postgres::xlog::record_header::XLogRecordHeader;
+use std::{fmt, slice};
 
 /// XLogMessage contains the relevant parts of the replication message for monitoring.
 ///
 /// We only read headers to avoid reading user data.
 #[repr(C)]
 pub struct XLogMessage {
-    message_header: XLogMessageHeader,
+    pub header: XLogMessageHeader,
     pub wal_header: XLogRecordHeader,
     pub wal_block_headers: Vec<XLogRecordBlockHeader>,
 }
@@ -33,11 +32,11 @@ wal_header:
 block_headers:
     {}
 "#,
-            Lsn::from_u64(self.message_header.start_lsn),
-            Lsn::from_u64(self.message_header.end_lsn),
+            Lsn::from_u64(self.header.start_lsn),
+            Lsn::from_u64(self.header.end_lsn),
             "NYI",
             self.wal_header.xl_xid.0.to_string(),
-            get_simple_rmgr_info(self.wal_header.xl_rmid.0, self.wal_header.read_rmgr_info_bytes()).rmgr_name,
+            get_simple_rmgr_info(self.wal_header.xl_rmid.clone(), self.wal_header.read_rmgr_info_bytes()).rmgr_name,
             self.wal_header.xl_rmid.0,
             self.wal_block_headers.iter().map(|block_header| format!("{})", block_header)).collect::<Vec<_>>().join("\n    ")
         )
@@ -52,22 +51,29 @@ impl XLogMessage {
             .collect()
     }
 
-    pub unsafe fn from_ptr(ptr: *const u8) -> XLogMessage {
-        let mut _offset = 1;
+    pub unsafe fn from_ptr(ptr: *const u8) -> Result<XLogMessage, String> {
+        let mut _offset = 0;
 
         let message_header = XLogMessageHeader::from_raw_ptr(ptr.add(_offset));
+
+        println!("lsn: {}", Lsn::from_u64(message_header.start_lsn));
         _offset += size_of::<XLogMessageHeader>();
 
         let wal_header = XLogRecordHeader::from_raw_ptr(ptr.add(_offset));
+        let rmgr = ResourceManager::try_from(wal_header.xl_rmid.clone()).expect("failed to determine rmgr");
         _offset += size_of::<XLogRecordHeader>();
+
+        if !matches!(rmgr, ResourceManager::Heap) {
+            return Err(format!("{} not yet handled", rmgr))
+        }
 
         let wal_block_headers = process_wal_record(ptr.add(_offset));
 
-        XLogMessage {
-            message_header,
+        Ok(XLogMessage {
+            header: message_header,
             wal_header,
             wal_block_headers,
-        }
+        })
     }
 }
 
