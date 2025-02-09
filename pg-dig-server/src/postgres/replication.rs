@@ -49,7 +49,7 @@ pub unsafe fn read_message(conn: *mut PGconn) -> Result<XLogMessage, String> {
                 Ok(result) => {
                     return Ok(result)
                 },
-                Err(msg)=> println!("{}", msg)
+                Err(_)=> {  }
             } ,
             'k' => println!("*keep-alive*"),
             record_code => return Err(String::from(format!("unexpected record type: {}", record_code)))

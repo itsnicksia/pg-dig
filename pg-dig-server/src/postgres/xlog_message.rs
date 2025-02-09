@@ -3,9 +3,18 @@ use crate::postgres::common::rmgr::{get_simple_rmgr_info, ResourceManager};
 use crate::postgres::xlog::block_header::XLogRecordBlockHeader;
 use crate::postgres::xlog::record_header::XLogRecordHeader;
 use crate::postgres::xlog_parser::process_wal_record;
-use scroll::Pread;
+use scroll::{Endian, Pread};
 use std::fmt::Formatter;
 use std::{fmt, slice};
+
+fn get_endianness() -> Endian {
+    if cfg!(target_arch = "x86_64") {
+        return scroll::BE;
+    } else if cfg!(target_arch = "arm") {
+        return scroll::BE;
+    }
+    panic!("unknown arch")
+}
 
 /// XLogMessage contains the relevant parts of the replication message for monitoring.
 ///
@@ -55,8 +64,6 @@ impl XLogMessage {
         let mut _offset = 0;
 
         let message_header = XLogMessageHeader::from_raw_ptr(ptr.add(_offset));
-
-        println!("lsn: {}", Lsn::from_u64(message_header.start_lsn));
         _offset += size_of::<XLogMessageHeader>();
 
         let wal_header = XLogRecordHeader::from_raw_ptr(ptr.add(_offset));
@@ -65,12 +72,13 @@ impl XLogMessage {
         let rmgr = ResourceManager::try_from(wal_header.xl_rmid.clone());
 
         if rmgr.is_err() {
-            return Err("unknown rmgr".to_string());
+            return Err(format!("failed to find ResourceManager with id: {}", wal_header.xl_rmid.0).to_string());
         }
 
         let rm = rmgr?;
+        println!("lsn: {} ({})", Lsn::from_u64(message_header.start_lsn), rm);
 
-        if !matches!(rm, ResourceManager::Heap) {
+        if !matches!(rm, ResourceManager::Heap) && !matches!(rm, ResourceManager::Heap2) {
             return Err(format!("{} not yet handled", rm))
         }
 
@@ -90,7 +98,7 @@ pub struct XLogMessageHeader {
     // The first LSN of this message
     pub start_lsn: u64,
 
-    // The most recent database LSN
+    // The last LSN of this message
     pub end_lsn: u64,
 
     // When it was sent
@@ -100,7 +108,7 @@ pub struct XLogMessageHeader {
 impl XLogMessageHeader {
     pub unsafe fn from_raw_ptr(ptr: *const u8) -> XLogMessageHeader {
         slice::from_raw_parts(ptr, size_of::<XLogMessageHeader>())
-            .pread_with::<XLogMessageHeader>(0, scroll::BE)
+            .pread_with::<XLogMessageHeader>(0, get_endianness())
             .expect("failed to read xlog record")
     }
 }

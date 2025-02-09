@@ -45,11 +45,11 @@ pub unsafe fn process_wal_record(buffer: *const u8) -> Vec<XLogRecordBlockHeader
     /* peek at the block header id */
     loop {
         let block_id = *buffer.add(_offset);
-        println!("block {}", block_id);
+        println!("block index: {} at offset {}", block_id, _offset);
         match block_id {
             0..XLR_MAX_BLOCK_ID => {
                 let (block_header, block_header_size) = parse_normal_block_header(buffer);
-                //println!("{:#?}", block_header);
+                println!("{:#?}", block_header);
                 block_headers.push(block_header);
                 _offset += block_header_size;
             }

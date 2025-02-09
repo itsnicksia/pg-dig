@@ -1,6 +1,7 @@
 use crate::postgres::test_data::TEST_BUFFER;
 use pg_dig_server::postgres::common::transaction_id::TransactionId;
-use pg_dig_server::postgres::common::{RelFileLocator, RmgrId};
+use pg_dig_server::postgres::common::{RelFileLocator};
+use pg_dig_server::postgres::common::rmgr::RmgrId;
 use pg_dig_server::postgres::xlog::block_header::XLogRecordBlockHeader;
 use pg_dig_server::postgres::xlog::block_image_header::XLogRecordBlockImageHeader;
 use pg_dig_server::postgres::xlog::record_header::XLogRecordHeader;
